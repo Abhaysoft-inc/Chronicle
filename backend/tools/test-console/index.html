@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chronicle test console</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --ink: #1c2330; --muted: #667085; --line: #dfe3ea;
+    --accent: #2b59c3; --ok: #1a7f4b; --okbg: #e3f5ea; --bad: #b42318; --badbg: #fde8e6;
+    --warn: #8a5a00; --warnbg: #fff3d6; --hl: #fff2a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2029; --ink: #e6e9ef; --muted: #9aa3b2; --line: #2d3442;
+      --accent: #7aa2ff; --ok: #5fd397; --okbg: #14301f; --bad: #ff8a80; --badbg: #3a1815;
+      --warn: #f0c36a; --warnbg: #3a2e10; --hl: #4d4510;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 system-ui, "Segoe UI", "Nirmala UI", "Noto Sans", sans-serif; }
+  header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 16px;
+    background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 16px; margin: 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  section > h2 { font-size: 14px; margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
+  .step { background: var(--accent); color: #fff; border-radius: 50%; width: 20px; height: 20px;
+    display: inline-grid; place-items: center; font-size: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  label { color: var(--muted); font-size: 12px; }
+  input, select, button { font: inherit; color: inherit; }
+  input[type=text], input[type=password], input[type=number], select {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--bg); border: 1px solid var(--line); }
+  .pill.ok { color: var(--ok); background: var(--okbg); border-color: transparent; }
+  .pill.bad { color: var(--bad); background: var(--badbg); border-color: transparent; }
+  .pill.warn { color: var(--warn); background: var(--warnbg); border-color: transparent; }
+  .muted { color: var(--muted); }
+  .stages { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stage { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-width: 150px; }
+  .stage b { display: block; }
+  .stage.running { border-color: var(--accent); }
+  .stage.done { border-color: var(--ok); }
+  .stage.failed { border-color: var(--bad); }
+  .event { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+  .event.unverified { border-color: var(--bad); background: var(--badbg); }
+  .event.rejected { opacity: .5; }
+  .event h3 { font-size: 13px; margin: 0 0 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .quote { margin: 4px 0 0 8px; padding-left: 8px; border-left: 3px solid var(--line); }
+  .quote.bad { border-left-color: var(--bad); }
+  .quote.good { border-left-color: var(--ok); }
+  .orig { font-size: 15px; }
+  .viewer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 800px) { .viewer { grid-template-columns: 1fr; } }
+  .frame { border: 1px solid var(--line); border-radius: 8px; height: 520px; background: var(--bg); overflow: auto; }
+  .frame iframe, .frame img { width: 100%; height: 100%; border: 0; object-fit: contain; }
+  .blocks { height: 520px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+  .block { padding: 4px 6px; border-radius: 6px; border-bottom: 1px dashed var(--line); }
+  .block.hl { background: var(--hl); }
+  .block .meta { font-size: 11px; color: var(--muted); }
+  .block .txt { font-size: 15px; white-space: pre-wrap; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+  details.log { border-bottom: 1px solid var(--line); padding: 3px 0; }
+  details.log summary { cursor: pointer; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  #toast { position: fixed; right: 16px; bottom: 16px; background: var(--bad); color: #fff; padding: 8px 14px;
+    border-radius: 8px; max-width: 420px; display: none; z-index: 9; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Chronicle test console</h1>
+  <span id="health" class="pill">checking…</span>
+  <label>API URL <input id="apiBase" type="text" size="26" placeholder="http://localhost:4000"></label>
+  <span style="flex:1"></span>
+  <label>API token <input id="token" type="password" placeholder="only if API_TOKEN is set" size="18"></label>
+</header>
+
+<main>
+  <section>
+    <h2><span class="step">1</span> Case</h2>
+    <div class="row">
+      <label>Open existing</label>
+      <select id="caseSelect" style="min-width:280px"></select>
+      <button class="ghost small" id="reloadCases">Reload list</button>
+    </div>
+    <div class="row">
+      <label>or create new:</label>
+      <input id="newTitle" type="text" placeholder="Case title" size="28">
+      <select id="newType">
+        <option>general</option><option>surgical</option><option>medical</option><option>obstetric</option><option>emergency</option>
+      </select>
+      <label>brief language</label>
+      <select id="newOut" class="langSelect"></select>
+      <button id="createCase">Create case</button>
+    </div>
+    <div id="caseInfo" class="muted"></div>
+  </section>
+
+  <section>
+    <h2><span class="step">2</span> Upload documents</h2>
+    <div class="row">
+      <input id="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+      <label>document language</label>
+      <select id="upLang" class="langSelect"></select>
+      <button id="upload">Upload</button>
+    </div>
+    <div class="muted" style="font-size:12px">Leave language on "(auto)" and Sarvam assumes an Indic-language document. PDF, JPG or PNG only; the type is checked from the file's bytes.</div>
+    <div id="docs"></div>
+  </section>
+
+  <section>
+    <h2><span class="step">3</span> Process</h2>
+    <div class="row">
+      <button id="process">Process case</button>
+      <span class="muted" id="procNote">Splits into ≤10-page chunks, OCRs, extracts events, verifies quotes. Safe to press again: finished work is cached.</span>
+    </div>
+    <div class="stages" id="stages"></div>
+    <div id="issues"></div>
+  </section>
+
+  <section>
+    <h2><span class="step">4</span> Timeline</h2>
+    <div class="row">
+      <label><input type="checkbox" id="verifiedOnly"> verified only</label>
+      <button class="ghost small" id="reloadTl">Reload</button>
+      <span id="tlSummary" class="muted"></span>
+    </div>
+    <div id="timeline"><span class="muted">No events yet.</span></div>
+  </section>
+
+  <section>
+    <h2><span class="step">5</span> Page viewer: original vs what OCR read</h2>
+    <div class="row">
+      <select id="vDoc" style="min-width:240px"></select>
+      <button class="ghost small" id="vPrev">◀</button>
+      <label>page</label><input id="vPage" type="number" min="1" value="1" style="width:70px">
+      <button class="ghost small" id="vNext">▶</button>
+      <span id="vInfo" class="muted"></span>
+    </div>
+    <div class="viewer">
+      <div class="frame" id="vOrig"><span class="muted" style="padding:8px;display:block">Pick a document.</span></div>
+      <div class="blocks" id="vBlocks"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Request log <button class="ghost small" id="clearLog">clear</button></h2>
+    <div id="log"><span class="muted">Every API call shows up here. Click one to see the raw response.</span></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const LANGS = [
+  ['', '(auto / Indic default)'],
+  ['hi-IN', 'Hindi'], ['ta-IN', 'Tamil'], ['te-IN', 'Telugu'], ['bn-IN', 'Bengali'], ['mr-IN', 'Marathi'],
+  ['gu-IN', 'Gujarati'], ['kn-IN', 'Kannada'], ['ml-IN', 'Malayalam'], ['pa-IN', 'Punjabi'], ['od-IN', 'Odia'],
+  ['en-IN', 'English'],
+  ['ur-IN', 'Urdu (Tier 2)'], ['as-IN', 'Assamese (Tier 2)'], ['ne-IN', 'Nepali (Tier 2)'], ['sa-IN', 'Sanskrit (Tier 2)'],
+  ['sat-IN', 'Santhali (Tier 3)'], ['ks-IN', 'Kashmiri (Tier 3)'],
+];
+const $ = (id) => document.getElementById(id);
+// OCR text is untrusted: every dynamic value goes through esc() before it touches innerHTML.
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const state = { caseId: null, docs: [], highlight: new Set(), blobs: new Map(), poll: null };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage blocked: fine */ } },
+};
+
+// ---------- API ----------
+class ApiError extends Error { constructor(status, body) { super(body?.error?.message || `HTTP ${status}`); this.status = status; this.body = body; } }
+
+async function api(path, { method = 'GET', json, form, raw } = {}) {
+  const headers = {};
+  const token = $('token').value.trim();
+  if (token) headers['x-api-token'] = token;
+  let body;
+  if (json !== undefined) { headers['content-type'] = 'application/json'; body = JSON.stringify(json); }
+  if (form) body = form;
+  const t0 = performance.now();
+  let res;
+  try { res = await fetch(base() + '/api' + path, { method, headers, body }); }
+  catch (e) { addLog(method, path, 0, performance.now() - t0, String(e)); throw e; }
+  if (raw) { addLog(method, path, res.status, performance.now() - t0, `(${res.headers.get('content-type')})`); if (!res.ok) throw new ApiError(res.status, null); return res; }
+  const text = await res.text();
+  let data; try { data = JSON.parse(text); } catch { data = text; }
+  addLog(method, path, res.status, performance.now() - t0, data);
+  if (!res.ok) throw new ApiError(res.status, data);
+  return data;
+}
+
+function addLog(method, path, status, ms, data) {
+  const log = $('log');
+  if (log.firstElementChild && log.firstElementChild.tagName === 'SPAN') log.innerHTML = '';
+  const d = document.createElement('details');
+  d.className = 'log';
+  const cls = status >= 200 && status < 300 ? 'ok' : 'bad';
+  d.innerHTML = `<summary><span class="pill ${cls}">${esc(status || 'ERR')}</span> ${esc(method)} ${esc(path)} <span class="muted">${ms.toFixed(0)} ms</span></summary><pre>${esc(typeof data === 'string' ? data : JSON.stringify(data, null, 2))}</pre>`;
+  log.prepend(d);
+  while (log.children.length > 40) log.lastElementChild.remove();
+}
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.display = 'none'; }, 6000);
+}
+const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message || String(e)); } };
+
+// ---------- setup ----------
+for (const sel of document.querySelectorAll('.langSelect')) {
+  sel.innerHTML = LANGS.map(([c, n]) => `<option value="${esc(c)}">${esc(n)}${c ? ' · ' + esc(c) : ''}</option>`).join('');
+}
+$('newOut').value = 'en-IN';
+$('token').value = store.get('chronicle.token') || '';
+$('token').addEventListener('change', () => { store.set('chronicle.token', $('token').value); init(); });
+
+// Where the backend lives. Opened from the backend itself (http://localhost:4000/test/) it is the
+// same origin. Opened from anywhere else (Live Server on :5500, a file, ...) it defaults to :4000.
+const servedByBackend = location.pathname.startsWith('/test') && location.port !== '5500';
+$('apiBase').value = store.get('chronicle.apiBase') || (servedByBackend ? location.origin : 'http://localhost:4000');
+$('apiBase').addEventListener('change', () => { store.set('chronicle.apiBase', $('apiBase').value.trim()); state.blobs.clear(); init(); });
+const base = () => $('apiBase').value.trim().replace(/\/+$/, '');
+
+async function checkHealth() {
+  try {
+    const h = await (await fetch(base() + '/health')).json();
+    const el = $('health');
+    el.className = 'pill ' + (h.sarvamKeyConfigured ? 'ok' : 'warn');
+    el.textContent = h.cacheOnly ? 'cache-only mode' : h.sarvamKeyConfigured ? 'API up · Sarvam key set' : 'API up · NO Sarvam key (uploads work, OCR will fail)';
+  } catch {
+    $('health').className = 'pill bad';
+    $('health').textContent = `Cannot reach ${base()}: start the backend (npm run dev in /backend), then reload`;
+  }
+}
+
+async function loadCases(selectId) {
+  const { cases } = await api('/cases');
+  const sel = $('caseSelect');
+  sel.innerHTML = '<option value="">-- choose a case --</option>' + cases.map((c) =>
+    `<option value="${esc(c.id)}">${esc(c.title)} · ${esc(c.status)} · ${esc(c.document_count)} doc(s)</option>`).join('');
+  const want = selectId || state.caseId || store.get('chronicle.case');
+  if (want && cases.some((c) => c.id === want)) { sel.value = want; await openCase(want); }
+}
+
+// ---------- case ----------
+$('reloadCases').onclick = guard(() => loadCases());
+$('caseSelect').onchange = guard(() => openCase($('caseSelect').value));
+$('createCase').onclick = guard(async () => {
+  const title = $('newTitle').value.trim();
+  if (!title) return toast('Give the case a title');
+  const { case: c } = await api('/cases', { method: 'POST', json: { title, case_type: $('newType').value, output_language: $('newOut').value } });
+  $('newTitle').value = '';
+  await loadCases(c.id);
+});
+
+async function openCase(id) {
+  stopPolling();
+  state.caseId = id || null;
+  store.set('chronicle.case', id || '');
+  if (!id) { $('caseInfo').textContent = ''; $('docs').innerHTML = ''; $('stages').innerHTML = ''; $('issues').innerHTML = ''; $('timeline').innerHTML = ''; return; }
+  await refresh();
+  const p = await api(`/cases/${id}/pipeline`);
+  if (p.status === 'processing') startPolling();
+}
+
+async function refresh() {
+  if (!state.caseId) return;
+  const d = await api(`/cases/${state.caseId}`);
+  state.docs = d.documents;
+  const c = d.case;
+  $('caseInfo').innerHTML = `<b>${esc(c.title)}</b> · ${esc(c.case_type)} · status <span class="pill ${statusCls(c.status)}">${esc(c.status)}</span> · brief language ${esc(c.output_language)} · events ${esc(d.events.total)} (<span style="color:var(--bad)">${esc(d.events.unverified)} unverified</span>)`;
+  renderDocs(d.documents);
+  renderStages(d.pipeline);
+  renderIssues(d.page_issues);
+  fillViewerDocs();
+  await loadTimeline();
+}
+const statusCls = (s) => ['processed'].includes(s) ? 'ok' : ['failed', 'interrupted'].includes(s) ? 'bad' : ['processing', 'processed_with_warnings'].includes(s) ? 'warn' : '';
+
+function renderDocs(docs) {
+  if (!docs.length) { $('docs').innerHTML = '<div class="muted" style="margin-top:8px">No documents yet.</div>'; return; }
+  $('docs').innerHTML = '<table><tr><th>File</th><th>Type</th><th>Pages</th><th>Language</th><th>Problems</th><th></th></tr>' + docs.map((d) =>
+    `<tr><td>${esc(d.filename)}</td><td>${esc(d.mime)}</td><td>${d.page_count ?? '<span class="muted">not split yet</span>'}</td><td>${esc(d.language || '(auto)')}</td>` +
+    `<td>${d.failed_pages ? `<span class="pill bad">${esc(d.failed_pages)} failed</span> ` : ''}${d.pages_with_warnings ? `<span class="pill warn">${esc(d.pages_with_warnings)} warning(s)</span>` : ''}</td>` +
+    `<td><button class="ghost small" data-view="${esc(d.id)}">view</button></td></tr>`).join('') + '</table>';
+  for (const b of $('docs').querySelectorAll('[data-view]')) b.onclick = () => { $('vDoc').value = b.dataset.view; $('vPage').value = 1; guard(loadPage)(); $('vDoc').scrollIntoView({ behavior: 'smooth' }); };
+}
+
+$('upload').onclick = guard(async () => {
+  if (!state.caseId) return toast('Open or create a case first');
+  const files = $('files').files;
+  if (!files.length) return toast('Choose at least one file');
+  const form = new FormData();
+  for (const f of files) form.append('files', f, f.name);
+  if ($('upLang').value) form.append('language', $('upLang').value);
+  const r = await api(`/cases/${state.caseId}/documents`, { method: 'POST', form });
+  const dups = r.documents.filter((d) => d.duplicate).length;
+  if (dups) toast(`${dups} file(s) were already uploaded and were skipped`);
+  $('files').value = '';
+  await refresh();
+});
+
+// ---------- pipeline ----------
+$('process').onclick = guard(async () => {
+  if (!state.caseId) return toast('Open or create a case first');
+  const r = await api(`/cases/${state.caseId}/process`, { method: 'POST' });
+  if (r.alreadyRunning) toast('Already running');
+  renderStages(r.stages);
+  startPolling();
+});
+
+function renderStages(stages) {
+  $('stages').innerHTML = stages.map((s) =>
+    `<div class="stage ${esc(s.status)}"><b>${esc(s.stage)}</b><span class="pill ${s.status === 'done' ? 'ok' : s.status === 'failed' ? 'bad' : s.status === 'running' ? 'warn' : ''}">${esc(s.status)}</span>` +
+    `${s.progress ? `<div class="muted">${esc(s.progress)}</div>` : ''}${s.error ? `<div style="color:var(--bad)">${esc(s.error)}</div>` : ''}</div>`).join('');
+}
+function renderIssues(issues) {
+  $('issues').innerHTML = issues.length
+    ? '<div style="margin-top:10px"><b>Pages NOT fully analysed</b> <span class="muted">(a missing page must never be read as missing care)</span><table>' +
+      issues.map((i) => `<tr><td>${esc(docName(i.document_id))} p.${esc(i.page_no)}</td><td><span class="pill ${i.ocr_status === 'ok' ? 'warn' : 'bad'}">${esc(i.ocr_status)}</span></td><td>${esc(i.warning || '')}</td></tr>`).join('') + '</table></div>'
+    : '';
+}
+const docName = (id) => state.docs.find((d) => d.id === id)?.filename || id;
+
+function startPolling() {
+  stopPolling();
+  state.poll = setInterval(guard(async () => {
+    const p = await api(`/cases/${state.caseId}/pipeline`);
+    renderStages(p.stages);
+    if (p.status !== 'processing') { stopPolling(); await refresh(); if (p.status === 'failed') toast('Pipeline failed: see the red stage above'); }
+  }), 1200);
+}
+function stopPolling() { if (state.poll) clearInterval(state.poll); state.poll = null; }
+
+// ---------- timeline ----------
+$('reloadTl').onclick = guard(loadTimeline);
+$('verifiedOnly').onchange = guard(loadTimeline);
+
+async function loadTimeline() {
+  if (!state.caseId) return;
+  const t = await api(`/cases/${state.caseId}/timeline${$('verifiedOnly').checked ? '?verified=true' : ''}`);
+  $('tlSummary').textContent = `${t.total} event(s), ${t.verified} verified, ${t.total - t.verified} not verified`;
+  if (!t.events.length) { $('timeline').innerHTML = '<span class="muted">No events yet.</span>'; return; }
+  $('timeline').innerHTML = t.events.map(renderEvent).join('');
+  for (const b of $('timeline').querySelectorAll('[data-act]')) b.onclick = guard(() => act(b.dataset.id, b.dataset.act));
+  for (const b of $('timeline').querySelectorAll('[data-goto]')) b.onclick = () => { const [doc, page, ids] = b.dataset.goto.split('|'); gotoSource(doc, Number(page), ids.split(',')); };
+}
+
+function renderEvent(e) {
+  const det = Object.entries(e.details || {}).filter(([, v]) => v !== null && v !== '').map(([k, v]) => `${esc(k)}: <b>${esc(v)}</b>`).join(' · ');
+  const corr = e.corrected ? `<div class="pill warn">corrected by a person: ${esc(JSON.stringify(e.corrected))}</div>` : '';
+  const srcs = e.sources.map((s) => `
+    <div class="quote ${s.verified ? 'good' : 'bad'}">
+      <div class="orig">${esc(s.quote_original)}</div>
+      <div class="muted">EN (machine-generated): ${esc(s.quote_en ?? '—')}</div>
+      <div class="muted">${esc(docName(s.document_id))} · p.${esc(s.page_no)} · ${esc(s.block_ids.join(', '))}
+        ${s.verified ? '<span class="pill ok">quote found in OCR text</span>' : `<span class="pill bad">NOT verified: ${esc(s.verify_reason || 'unchecked')}</span>`}
+        <button class="ghost small" data-goto="${esc(s.document_id)}|${esc(s.page_no)}|${esc(s.block_ids.join(','))}">show on page</button></div>
+    </div>`).join('');
+  return `<div class="event ${e.verified ? '' : 'unverified'} ${e.review_status === 'rejected' ? 'rejected' : ''}">
+    <h3><span class="pill">${esc(e.label)}</span><span class="pill">${esc(e.type)}</span>
+      <span>${esc(e.summary_en)}</span>
+      ${e.verified ? '<span class="pill ok">verified</span>' : '<span class="pill bad">not verified: excluded from findings</span>'}
+      <span class="pill ${e.review_status === 'confirmed' ? 'ok' : e.review_status === 'rejected' ? 'bad' : ''}">${esc(e.review_status)}</span>
+      ${e.legibility !== 'clear' ? `<span class="pill warn">${esc(e.legibility)}</span>` : ''}</h3>
+    <div class="muted">${e.raw_date ? 'date as written: <b>' + esc(e.raw_date) + '</b> · ' : 'no date · '}${e.actor_role ? esc(e.actor_role) + ' · ' : ''}${det}</div>
+    ${corr}${srcs}
+    <div class="row"><button class="small" data-act="confirmed" data-id="${esc(e.id)}">Confirm</button>
+      <button class="small ghost" data-act="rejected" data-id="${esc(e.id)}">Reject</button>
+      <button class="small ghost" data-act="correct" data-id="${esc(e.id)}" data-sum="${esc(e.summary_en)}">Correct…</button></div>
+  </div>`;
+}
+
+async function act(id, what) {
+  let json;
+  if (what === 'correct') {
+    const btn = document.querySelector(`[data-act="correct"][data-id="${CSS.escape(id)}"]`);
+    const summary = prompt('Corrected one-line summary:', btn?.dataset.sum || '');
+    if (!summary) return;
+    json = { corrections: { summary_en: summary } };
+  } else json = { review_status: what };
+  await api(`/events/${encodeURIComponent(id)}`, { method: 'PATCH', json });
+  await loadTimeline();
+}
+
+// ---------- page viewer ----------
+function fillViewerDocs() {
+  const sel = $('vDoc'); const keep = sel.value;
+  sel.innerHTML = state.docs.map((d) => `<option value="${esc(d.id)}">${esc(d.filename)} (${esc(d.page_count ?? '?')} p)</option>`).join('');
+  if (state.docs.some((d) => d.id === keep)) sel.value = keep;
+  else { $('vPage').value = 1; state.highlight = new Set(); } // different case: do not carry the old page over
+  const meta = state.docs.find((d) => d.id === sel.value);
+  if (meta?.page_count && Number($('vPage').value) > meta.page_count) $('vPage').value = 1;
+  if (state.docs.length) guard(loadPage)(); else { $('vOrig').innerHTML = ''; $('vBlocks').innerHTML = ''; $('vInfo').textContent = ''; }
+}
+$('vDoc').onchange = () => { $('vPage').value = 1; state.highlight = new Set(); guard(loadPage)(); };
+$('vPage').onchange = () => { state.highlight = new Set(); guard(loadPage)(); };
+$('vPrev').onclick = () => { $('vPage').value = Math.max(1, Number($('vPage').value) - 1); state.highlight = new Set(); guard(loadPage)(); };
+$('vNext').onclick = () => { $('vPage').value = Number($('vPage').value) + 1; state.highlight = new Set(); guard(loadPage)(); };
+
+function gotoSource(docId, page, blockIds) {
+  $('vDoc').value = docId; $('vPage').value = page; state.highlight = new Set(blockIds);
+  guard(loadPage)(); $('vBlocks').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function loadPage() {
+  const doc = $('vDoc').value; const n = Number($('vPage').value);
+  if (!doc || !(n >= 1)) return;
+  const meta = state.docs.find((d) => d.id === doc);
+  // Pages only exist after the ingest stage. Do not ask the API for ones that cannot exist yet.
+  if (!meta || meta.page_count == null) {
+    $('vInfo').textContent = 'Not processed yet: press "Process case" to get OCR text for this file.';
+    $('vBlocks').innerHTML = '';
+    await showOriginal(doc, n, meta?.mime);
+    return;
+  }
+  if (n > meta.page_count) {
+    $('vInfo').textContent = `This document has ${meta.page_count} page(s).`;
+    $('vBlocks').innerHTML = '';
+    return;
+  }
+  const r = await api(`/documents/${doc}/pages/${n}`).catch((e) => {
+    $('vInfo').textContent = '';
+    $('vBlocks').innerHTML = `<div style="color:var(--bad);padding:6px">${esc(e.message)}</div>`;
+    $('vOrig').innerHTML = '';
+    throw e;
+  });
+  const p = r.page;
+  $('vInfo').innerHTML = `OCR <span class="pill ${p.ocr_status === 'ok' ? 'ok' : 'bad'}">${esc(p.ocr_status)}</span> · script ${esc(p.script || '?')} · tier ${esc(p.language_tier ?? '?')} · type ${esc(p.doc_type || 'not extracted')}` +
+    (p.warning ? ` <span class="pill warn">${esc(p.warning)}</span>` : '');
+  $('vBlocks').innerHTML = r.blocks.length ? r.blocks.map((b) => `
+    <div class="block ${state.highlight.has(b.block_id) ? 'hl' : ''}" id="blk-${esc(b.block_id)}">
+      <div class="meta">${esc(b.block_id)} · ${esc(b.tag || 'no tag')} · bbox ${esc(JSON.stringify(b.bbox))}</div>
+      <div class="txt">${esc(b.text)}</div></div>`).join('') : '<div class="muted" style="padding:6px">No text blocks for this page.</div>';
+  document.querySelector('.block.hl')?.scrollIntoView({ block: 'nearest' });
+  await showOriginal(doc, n, meta?.mime);
+}
+
+async function showOriginal(doc, page, mime) {
+  const box = $('vOrig');
+  try {
+    if (!state.blobs.has(doc)) {
+      const res = await api(`/documents/${doc}/file`, { raw: true });
+      state.blobs.set(doc, URL.createObjectURL(await res.blob()));
+    }
+    const url = state.blobs.get(doc);
+    box.innerHTML = mime === 'application/pdf' ? `<iframe src="${url}#page=${page}" title="original"></iframe>` : `<img src="${url}" alt="original">`;
+  } catch (e) { box.innerHTML = `<span style="padding:8px;display:block;color:var(--bad)">Could not load the original: ${esc(e.message)}</span>`; }
+}
+
+$('clearLog').onclick = () => { $('log').innerHTML = '<span class="muted">Cleared.</span>'; };
+
+// ---------- go ----------
+async function init() { await checkHealth(); await guard(() => loadCases())(); }
+init();
+</script>
+</body>
+</html>
