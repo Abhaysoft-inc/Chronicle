@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Design tokens. Light by default, dark follows the OS. Components use the semantic names
+   (surface, line, ok, bad...) so a theme change is a change in this one block. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f2f4f7;
+  --fg: #101828;
+  --muted: #566070;
+  --line: #e4e7ec;
+  --accent: #1d5bbf;
+  --accent-fg: #ffffff;
+  --ok: #067647;
+  --ok-bg: #ecfdf3;
+  --bad: #b42318;
+  --bad-bg: #fef3f2;
+  --warn: #93370d;
+  --warn-bg: #fffaeb;
+  --hl: #fff2a8;
+
+  /* Chart colours (the validated data-viz palette). One blue for a single data series; the status
+     colours are fixed and always shown with an icon and a label, never as colour alone. */
+  --viz-1: #2a78d6;
+  --viz-good: #0ca30c;
+  --viz-warn: #fab219;
+  --viz-crit: #d03b3b;
+  --viz-neutral: #c3c2b7;
+  --viz-neutral-ink: #0b0b0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1d242d;
+    --fg: #eef0f3;
+    --muted: #b0b8c5;
+    --line: #2a313c;
+    --accent: #6ea0ff;
+    --accent-fg: #0b1220;
+    --ok: #6ce9a6;
+    --ok-bg: #0f2a1c;
+    --bad: #fda29b;
+    --bad-bg: #3a1512;
+    --warn: #fec84b;
+    --warn-bg: #3a2a0b;
+    --hl: #4d4510;
+    --viz-1: #3987e5;
+    --viz-neutral: #4a4a46;
+    --viz-neutral-ink: #ffffff;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-hl: var(--hl);
+  --color-viz-1: var(--viz-1);
+  --color-viz-good: var(--viz-good);
+  --color-viz-warn: var(--viz-warn);
+  --color-viz-crit: var(--viz-crit);
+  --color-viz-neutral: var(--viz-neutral);
+  --font-sans: var(--font-geist-sans), "Nirmala UI", "Noto Sans Devanagari", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Consolas, monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+/* Text that came from OCR in an Indian script. Needs fonts that carry those scripts and a
+   taller line height so vowel signs and conjuncts are not clipped. */
+.indic {
+  font-family: "Nirmala UI", "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Telugu",
+    "Noto Sans Bengali", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam",
+    "Noto Sans Gurmukhi", "Noto Sans Oriya", "Mangal", var(--font-geist-sans), system-ui, sans-serif;
+  line-height: 1.7;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
