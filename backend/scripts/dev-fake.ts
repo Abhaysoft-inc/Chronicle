@@ -32,6 +32,31 @@ addDocuments(ctx, demo.id, [{ filename: 'demo-hindi-12-pages.pdf', bytes: await 
 const urdu = createCase(ctx, { title: 'DEMO: Urdu page (Tier 2, withheld from analysis)', case_type: 'general', claim_summary: '', output_language: 'en-IN' }, demoUser.id);
 addDocuments(ctx, urdu.id, [{ filename: 'demo-urdu.pdf', bytes: await makePdf(1) }], 'ur-IN');
 
+// Add preloaded clinical test cases if generated sample records exist
+const suiteDir = path.join(import.meta.dirname, '..', 'samples', 'clinical-test-suite');
+const bundleFile = path.join(suiteDir, 'complete_surgical_case_bundle.pdf');
+const deviationFile = path.join(suiteDir, '09_care_deviation_and_gap_record.pdf');
+
+if (fs.existsSync(bundleFile)) {
+  const surgicalCase = createCase(ctx, {
+    title: 'DEMO: Ramesh Kumar - Lap Appendectomy (Full Case Bundle)',
+    case_type: 'surgical',
+    claim_summary: 'Patient underwent emergency laparoscopic appendectomy for gangrenous appendicitis. Sourced timeline and post-op recovery review.',
+    output_language: 'en-IN',
+  }, demoUser.id);
+  addDocuments(ctx, surgicalCase.id, [{ filename: 'complete_surgical_case_bundle.pdf', bytes: fs.readFileSync(bundleFile) }], 'hi-IN');
+}
+
+if (fs.existsSync(deviationFile)) {
+  const auditCase = createCase(ctx, {
+    title: 'DEMO: Vikram Singh - Clinical Safety & Deviation Audit',
+    case_type: 'emergency',
+    claim_summary: 'Clinical safety audit case evaluating allergy contraindications, monitoring gaps, and medication discrepancies.',
+    output_language: 'en-IN',
+  }, demoUser.id);
+  addDocuments(ctx, auditCase.id, [{ filename: '09_care_deviation_and_gap_record.pdf', bytes: fs.readFileSync(deviationFile) }], 'en-IN');
+}
+
 const server = createApp(ctx).listen(config.PORT, () => {
   console.log(`FAKE-Sarvam backend on http://localhost:${config.PORT}`);
   console.log(`Test console:        http://localhost:${config.PORT}/test/`);

@@ -7,6 +7,8 @@ import { authRouter, requireAuth } from './modules/auth/index.ts';
 import { casesRouter } from './modules/cases/index.ts';
 import { dashboardRouter } from './modules/dashboard/index.ts';
 import { documentsRouter } from './modules/documents/index.ts';
+import { findingsRouter } from './modules/findings/index.ts';
+import { briefRouter } from './modules/brief/index.ts';
 import { pipelineRouter } from './modules/pipeline/index.ts';
 import { timelineRouter } from './modules/timeline/index.ts';
 
@@ -38,6 +40,8 @@ export function createApp(ctx: Ctx): Express {
   api.use(dashboardRouter(ctx));
   api.use(casesRouter(ctx));
   api.use(documentsRouter(ctx));
+  api.use(findingsRouter(ctx));
+  api.use(briefRouter(ctx));
   api.use(pipelineRouter(ctx));
   api.use(timelineRouter(ctx));
   app.use('/api', api);

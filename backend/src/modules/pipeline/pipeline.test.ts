@@ -238,7 +238,7 @@ test('SSE: a snapshot first, then live updates until the case is processed (no p
   assert.ok(msgs.slice(1).every((m) => m.event === 'update'));
   const last = msgs[msgs.length - 1]!;
   assert.equal(last.data.status, 'processed');
-  assert.deepEqual(last.data.stages.map((s: any) => s.status), ['done', 'done', 'done', 'done']);
+  assert.deepEqual(last.data.stages.map((s: any) => s.status), ['done', 'done', 'done', 'done', 'done', 'done']);
   // we saw it move through states, not just the end result
   assert.ok(msgs.some((m) => m.data.status === 'processing'));
   assert.ok(msgs.some((m) => m.data.stages.some((s: any) => s.status === 'running')));

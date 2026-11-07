@@ -117,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ConnectionButton />
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-4 lg:px-6">{children}</main>
       </div>
     </div>
   );

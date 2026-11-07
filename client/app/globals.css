@@ -52,6 +52,12 @@
   }
 }
 
+/* A named breakpoint for very wide screens. Tailwind orders these by size, unlike an arbitrary min-[...] value,
+   which gets emitted before lg: and would be overridden by it. */
+@theme {
+  --breakpoint-3xl: 106rem;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

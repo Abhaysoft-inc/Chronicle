@@ -6,6 +6,8 @@ import { ingestCase } from '../documents/index.ts';
 import { extractCase } from '../extraction/index.ts';
 import { ocrCase } from '../ocr/index.ts';
 import { verifyCase } from '../verification/index.ts';
+import { runFindings } from '../findings/index.ts';
+import { generateBrief } from '../brief/index.ts';
 import { publishProgress, type ProgressSnapshot, type ProgressStage } from './pipeline.events.ts';
 
 // Each stage is idempotent: it only does work that is not done yet. So "resume after a
@@ -22,6 +24,14 @@ const STAGE_FNS: [name: string, fn: StageFn][] = [
   ['verify', (ctx, id) => {
     const { checked, failed } = verifyCase(ctx, id);
     return `${checked} quote(s) checked, ${failed} failed verification`;
+  }],
+  ['findings', async (ctx, id) => {
+    const { count } = await runFindings(ctx, id);
+    return `${count} issue(s) identified for expert review`;
+  }],
+  ['brief', async (ctx, id) => {
+    const brief = await generateBrief(ctx, id);
+    return `Expert brief compiled: ${brief.title}`;
   }],
 ];
 

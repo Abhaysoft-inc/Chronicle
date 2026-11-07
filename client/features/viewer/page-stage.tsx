@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorNote } from '@/components/ui/card';
 import { CONFIDENCE_LABEL, confidenceLevel } from '@/lib/confidence';
@@ -22,12 +22,14 @@ const LEVEL_BOX = {
  * percentages of the page, so they stay aligned at any zoom. Cited blocks are highlighted.
  * Only images get boxes: a PDF is shown in the browser's own viewer, which cannot be drawn on.
  */
-export function PageStage({ doc, page, blocks, highlight, onBlockClick, className = '' }: {
+export function PageStage({ doc, page, blocks, highlight, onBlockClick, caption, className = '' }: {
   doc: DocumentSummary;
   page: number;
   blocks: OcrBlock[] | undefined;
   highlight: ReadonlySet<string>;
   onBlockClick?: (blockId: string) => void;
+  /** What page this is (file name, page number). Shown at the right of the toolbar so it needs no row of its own. */
+  caption?: ReactNode;
   className?: string;
 }) {
   const [zoom, setZoom] = useState(1);
@@ -51,6 +53,7 @@ export function PageStage({ doc, page, blocks, highlight, onBlockClick, classNam
   return (
     <div className={`flex min-h-0 flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+        {caption && <p className="order-last ml-auto min-w-0 max-w-full truncate text-xs text-muted">{caption}</p>}
         {!isPdf && (
           <div className="flex items-center gap-1" role="group" aria-label="Zoom">
             <Button variant="secondary" size="sm" disabled={zoom <= ZOOMS[0]} onClick={() => setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])} aria-label="Zoom out">−</Button>
@@ -85,7 +88,8 @@ export function PageStage({ doc, page, blocks, highlight, onBlockClick, classNam
         ) : isPdf ? (
           <iframe key={`${doc.id}-${page}`} src={`${original.url}#page=${page}`} title="Original document" className="size-full min-h-96 border-0" />
         ) : (
-          <div className="relative mx-auto" style={{ width: `${zoom * 100}%` }}>
+          // At 100% the page fits the width but never grows past ~900px: a portrait page blown up to 1300px is just blurry.
+          <div className="relative mx-auto" style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? '56rem' : undefined }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- a blob: URL, so next/image cannot optimise it */}
             <img src={original.url} alt="Original document" draggable={false} onLoad={() => setLoadedUrl(original.url)} className="block h-auto w-full select-none" />
             {boxed.map((b) => {

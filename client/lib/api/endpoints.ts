@@ -1,6 +1,6 @@
 import { request, requestBlob } from './client';
 import type {
-  AuthUser, CaseDetail, CaseSummary, DashboardData, MeResult, PageData, PipelineSnapshot, PipelineStage, Timeline, UploadResult,
+  AuthUser, Brief, CaseDetail, CaseSummary, DashboardData, Finding, FindingsData, FindingStatus, MeResult, PageData, PipelineSnapshot, PipelineStage, Timeline, UploadResult,
 } from './types';
 
 // One function per backend endpoint. Components never build URLs themselves.
@@ -48,3 +48,15 @@ export const signIn = (input: { email: string; password: string }) =>
 export const signOut = () => request<{ ok: boolean }>('/auth/logout', { method: 'POST', json: {} });
 
 export const getDashboard = () => request<DashboardData>('/dashboard');
+
+// ---- findings and brief ----
+
+export const getFindings = (caseId: string) => request<FindingsData>(`/cases/${caseId}/findings`);
+
+export const patchFinding = (findingId: string, status: FindingStatus) =>
+  request<Finding>(`/findings/${encodeURIComponent(findingId)}`, { method: 'PATCH', json: { status } });
+
+export const getBrief = (caseId: string) => request<{ brief: Brief }>(`/cases/${caseId}/brief`).then((r) => r.brief);
+
+export const getBriefMarkdown = (caseId: string) => requestBlob(`/cases/${caseId}/brief?format=md`);
+

@@ -18,11 +18,15 @@ type Filter = 'all' | 'todo' | 'attention' | 'verified';
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
+const KBD = 'rounded bg-surface-2 px-1';
+
 /**
- * The review workbench. The page the selected event came from is on the left, large, with the
- * cited text boxed. The events are on the right; the selected one opens in place.
- * Keys: ↑/↓ or J/K move, C confirm, X reject, E correct. Click a box on the page to jump to the
- * event that cites it.
+ * The review workbench. Three zones that rearrange with the screen:
+ *   phone / small   stacked: page, events, details
+ *   laptop (lg)     page on the left; events above details on the right
+ *   wide (1700px+, the 3xl breakpoint)  three columns: events | page | details
+ * The events list never grows when you select one, so you always see several events at once.
+ * Keys: ↑/↓ or J/K move, C confirm, X reject, E correct. Click a box on the page to jump to its event.
  */
 export function TimelinePanel({ timeline, loading, error, documents, onChanged, onRetry }: {
   timeline: Timeline | undefined;
@@ -38,8 +42,8 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
   const [editing, setEditing] = useState(false);
   const actions = useEventActions(onChanged);
 
-  // On wide screens the workbench fills the rest of the window so nothing falls below the fold.
-  // Measured (not a fixed offset) because the banner above it comes and goes.
+  // On wide screens the workbench fills the rest of the window, so nothing falls below the fold.
+  // Measured (not a fixed offset) so it stays right whatever sits above it.
   const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const fit = () => {
@@ -50,7 +54,7 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
         return;
       }
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.height = `${Math.max(520, window.innerHeight - top - 28)}px`; // 24px = the page's bottom padding
+      el.style.height = `${Math.max(480, window.innerHeight - top - 20)}px`; // 16px = the page's bottom padding
     };
     fit();
     window.addEventListener('resize', fit);
@@ -122,81 +126,78 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
   const FILTERS: [Filter, string][] = [
     ['all', 'All'], ['todo', 'To review'], ['attention', 'Not verified'], ['verified', 'Verified'],
   ];
-  const unverified = count('attention');
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="group" aria-label="Filter events" className="inline-flex rounded-lg border border-line p-0.5">
-          {FILTERS.map(([f, label]) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => { setFilter(f); select(undefined); }}
-              className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${filter === f ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg'}`}
-            >
-              {label} <span className="opacity-70">{count(f)}</span>
-            </button>
-          ))}
-        </div>
-        <p className="text-[13px] text-muted">
-          <kbd className="rounded bg-surface-2 px-1">↑</kbd> <kbd className="rounded bg-surface-2 px-1">↓</kbd> move ·{' '}
-          <kbd className="rounded bg-surface-2 px-1">C</kbd> confirm · <kbd className="rounded bg-surface-2 px-1">X</kbd> reject ·{' '}
-          <kbd className="rounded bg-surface-2 px-1">E</kbd> correct · click a box on the page to jump to its event
-        </p>
+    <div
+      ref={panelRef}
+      className="grid gap-3 lg:min-h-[30rem] lg:grid-cols-[minmax(0,1fr)_minmax(23rem,28rem)] lg:grid-rows-[minmax(12rem,3fr)_4fr] 3xl:grid-cols-[21rem_minmax(0,1fr)_27rem] 3xl:grid-rows-1"
+    >
+      {/* The page: where the evidence is */}
+      <div className="flex min-h-0 flex-col lg:col-start-1 lg:row-span-2 lg:row-start-1 3xl:col-start-2 3xl:row-span-1">
+        {doc && source && (
+          <PageStage
+            key={doc.id}
+            doc={doc}
+            page={source.page_no}
+            blocks={pageData.data?.blocks}
+            highlight={new Set(source.block_ids)}
+            onBlockClick={onBlockClick}
+            caption={<><span className="indic">{doc.filename}</span> · p.{source.page_no}</>}
+            className="h-[60vh] lg:h-auto lg:flex-1"
+          />
+        )}
       </div>
 
-      {unverified > 0 && (
-        <p className="rounded-lg border border-bad/30 bg-bad-bg px-3 py-2 text-[13px] text-bad">
-          {unverified} event{unverified === 1 ? '' : 's'} cite{unverified === 1 ? 's' : ''} text that was not found in the OCR output. Still listed so you can check them, but kept out of findings and the brief.
-        </p>
-      )}
-
-      {shown.length === 0 ? (
-        <EmptyState>Nothing in this filter.</EmptyState>
-      ) : (
-        <div ref={panelRef} className="grid gap-3 lg:h-[calc(100dvh-19rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]">
-          <div className="flex min-h-0 flex-col gap-1.5">
-            <p className="flex flex-wrap items-baseline gap-x-2 text-[13px] text-muted">
-              Source page:
-              <span className="indic font-medium text-fg">{doc?.filename}</span>
-              <span>p.{source?.page_no}</span>
+      {/* The events, with the filters on top and the shortcuts underneath */}
+      <section aria-label="Events" className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface lg:col-start-2 lg:row-start-1 3xl:col-start-1">
+        <div className="border-b border-line p-2">
+          <div role="group" aria-label="Filter events" className="flex flex-wrap gap-1">
+            {FILTERS.map(([f, label]) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={filter === f}
+                onClick={() => { setFilter(f); select(undefined); }}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap ${filter === f ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-surface-2 hover:text-fg'} ${f === 'attention' && count(f) > 0 && filter !== f ? 'text-bad' : ''}`}
+              >
+                {label} <span className="opacity-70">{count(f)}</span>
+              </button>
+            ))}
+          </div>
+          {filter === 'attention' && count('attention') > 0 && (
+            <p className="mt-2 rounded-md bg-bad-bg px-2.5 py-1.5 text-xs text-bad">
+              These cite text that was not found in the OCR output. Check them against the page; they are kept out of findings and the brief.
             </p>
-            {doc && source && (
-              <PageStage
-                key={doc.id}
-                doc={doc}
-                page={source.page_no}
-                blocks={pageData.data?.blocks}
-                highlight={new Set(source.block_ids)}
-                onBlockClick={onBlockClick}
-                className="h-[60vh] lg:h-auto lg:flex-1"
-              />
-            )}
-          </div>
-
-          <div data-scroll-container className="max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface lg:max-h-none">
-            <EventList
-              events={shown}
-              selectedId={selected?.id}
-              onSelect={(id) => select(id)}
-              renderExpanded={(e) => (
-                <EventDetail
-                  event={e}
-                  documents={documents}
-                  sourceIndex={sourceIndex}
-                  onSourceChange={(i) => setPick({ id: e.id, source: i })}
-                  activeConfidence={weakestConfidence(pageData.data?.blocks, source?.block_ids ?? [])}
-                  actions={actions}
-                  editing={editing}
-                  onEditingChange={setEditing}
-                />
-              )}
-            />
-          </div>
+          )}
         </div>
-      )}
+        <div data-scroll-container className="min-h-0 flex-1 overflow-y-auto">
+          {shown.length === 0
+            ? <p className="p-4 text-center text-sm text-muted">Nothing in this filter.</p>
+            : <EventList events={shown} selectedId={selected?.id} onSelect={(id) => select(id)} />}
+        </div>
+        <p className="hidden border-t border-line px-3 py-1.5 text-[11px] text-muted sm:block">
+          <kbd className={KBD}>↑</kbd> <kbd className={KBD}>↓</kbd> move · <kbd className={KBD}>C</kbd> confirm · <kbd className={KBD}>X</kbd> reject · <kbd className={KBD}>E</kbd> correct
+        </p>
+      </section>
+
+      {/* The selected event: facts, evidence, and the actions */}
+      <section aria-label="Event details" className="min-h-0 overflow-hidden rounded-xl border border-line bg-surface lg:col-start-2 lg:row-start-2 3xl:col-start-3 3xl:row-start-1">
+        {selected ? (
+          <EventDetail
+            key={selected.id}
+            event={selected}
+            documents={documents}
+            sourceIndex={sourceIndex}
+            onSourceChange={(i) => setPick({ id: selected.id, source: i })}
+            activeConfidence={weakestConfidence(pageData.data?.blocks, source?.block_ids ?? [])}
+            actions={actions}
+            editing={editing}
+            onEditingChange={setEditing}
+          />
+        ) : (
+          <p className="grid h-full min-h-24 place-items-center p-4 text-center text-sm text-muted">Pick an event to see its evidence.</p>
+        )}
+      </section>
     </div>
   );
 }

@@ -171,3 +171,54 @@ export interface DashboardData {
     documents: number; events: number; reviewed: number; unverified: number;
   }[];
 }
+
+export type FindingCategory = 'missing_record' | 'documentation_gap' | 'timeline_conflict' | 'possible_care_deviation';
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type FindingStatus = 'open' | 'accepted' | 'dismissed';
+
+export interface Finding {
+  id: string;
+  case_id: string;
+  category: FindingCategory;
+  severity: FindingSeverity;
+  title: string;
+  explanation: string;
+  evidence_event_ids: string[];
+  question_for_expert: string;
+  origin: 'rule' | 'llm';
+  status: FindingStatus;
+  created_at: string;
+}
+
+export interface FindingsSummary {
+  total: number;
+  open: number;
+  accepted: number;
+  dismissed: number;
+  by_severity: Record<FindingSeverity, number>;
+  by_category: Record<FindingCategory, number>;
+}
+
+export interface FindingsData {
+  findings: Finding[];
+  summary: FindingsSummary;
+}
+
+export interface Brief {
+  id: string;
+  case_id: string;
+  title: string;
+  content_md: string;
+  sections: {
+    snapshot: string;
+    records_reviewed: string;
+    chronology: string;
+    issues_for_opinion: string;
+    questions_for_expert: string;
+    limits: string;
+  };
+  output_language: string;
+  created_at: string;
+  updated_at: string;
+}
+

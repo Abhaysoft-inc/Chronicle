@@ -9,7 +9,10 @@ import { confidenceLevel } from '@/lib/confidence';
 import { humanize, nearlySame, verifyReasonText } from '@/lib/format';
 import type { EventActions } from './use-event-actions';
 
-/** The body of the selected event: facts, evidence quotes, a handwriting warning, and the actions. */
+/**
+ * The selected event, in its own panel: the facts at the top, the evidence in a scrolling middle,
+ * and the actions pinned at the bottom so they never scroll out of reach.
+ */
 export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, activeConfidence, actions, editing, onEditingChange }: {
   event: TimelineEvent;
   documents: DocumentSummary[];
@@ -38,46 +41,50 @@ export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, 
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      {(e.legibility !== 'clear' || e.review_status !== 'unreviewed') && (
-        <div className="flex flex-wrap gap-1.5">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="border-b border-line px-4 py-3">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono font-semibold">{e.label}</span>
+          <Pill tone="info">{humanize(e.type)}</Pill>
+          {!e.verified && <Pill tone="bad">⚠ Not verified</Pill>}
           {e.legibility !== 'clear' && <Pill tone="warn">{humanize(e.legibility)} handwriting</Pill>}
           {e.review_status !== 'unreviewed' && (
             <Pill tone={e.review_status === 'confirmed' ? 'ok' : e.review_status === 'rejected' ? 'bad' : 'warn'}>{humanize(e.review_status)}</Pill>
           )}
         </div>
-      )}
 
-      {form ? (
-        <div className="flex flex-col gap-2">
-          <TextInput autoFocus value={form.summary} onChange={(ev) => setDraft({ ...form, summary: ev.target.value })} aria-label="Corrected summary" className="h-10 text-base" />
-          <TextInput value={form.date} onChange={(ev) => setDraft({ ...form, date: ev.target.value })} placeholder="Date as written (optional)" aria-label="Date as written" />
-          <div className="flex gap-2">
-            <Button size="sm" onClick={save} loading={actions.busy}>Save correction</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setDraft(null); onEditingChange(false); }}>Cancel (Esc)</Button>
+        {form ? (
+          <div className="mt-2.5 flex flex-col gap-2">
+            <TextInput autoFocus value={form.summary} onChange={(ev) => setDraft({ ...form, summary: ev.target.value })} aria-label="Corrected summary" className="h-10 text-base" />
+            <TextInput value={form.date} onChange={(ev) => setDraft({ ...form, date: ev.target.value })} placeholder="Date as written (optional)" aria-label="Date as written" />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} loading={actions.busy}>Save correction</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setDraft(null); onEditingChange(false); }}>Cancel (Esc)</Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          {e.corrected && <p className="text-xs text-warn">Edited by a person. Original: {e.summary_en}</p>}
-          <p className="text-sm text-muted">
-            {date ? <>Date as written: <b className="indic font-semibold text-fg">{date}</b></> : 'No date recorded'}
-            {e.actor_role && <> · {e.actor_role}</>}
-          </p>
-          {details.length > 0 && (
-            <dl className="flex flex-wrap gap-1.5">
-              {details.map(([k, v]) => (
-                <div key={k} className="indic rounded-md bg-surface-2 px-2 py-1 text-[13px]">
-                  <dt className="inline text-muted">{humanize(k)}: </dt>
-                  <dd className="inline font-medium">{String(v)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </>
-      )}
+        ) : (
+          <>
+            <h3 className="mt-2 text-base leading-snug font-semibold">{summary}</h3>
+            {e.corrected && <p className="mt-0.5 text-xs text-warn">Edited by a person. Original: {e.summary_en}</p>}
+            <p className="mt-1 text-[13px] text-muted">
+              {date ? <>Date as written: <b className="indic font-semibold text-fg">{date}</b></> : 'No date recorded'}
+              {e.actor_role && <> · {e.actor_role}</>}
+            </p>
+            {details.length > 0 && (
+              <dl className="mt-2 flex flex-wrap gap-1.5">
+                {details.map(([k, v]) => (
+                  <div key={k} className="indic rounded-md bg-surface-2 px-2 py-0.5 text-[13px]">
+                    <dt className="inline text-muted">{humanize(k)}: </dt>
+                    <dd className="inline font-medium">{String(v)}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </>
+        )}
+      </header>
 
-      <section aria-label="Evidence">
+      <section data-scroll-container aria-label="Evidence" className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <h4 className="mb-2 flex flex-wrap items-center gap-x-3 text-xs font-semibold tracking-wide text-muted uppercase">
           Evidence ({e.sources.length})
           {failing.length === 0 && <span className="font-medium tracking-normal text-ok normal-case">✓ found in the OCR text</span>}
@@ -95,7 +102,7 @@ export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, 
                   aria-pressed={active}
                   className={`block w-full rounded-lg border-l-4 px-3 py-2 text-left ${s.verified ? 'border-ok' : 'border-bad'} ${active ? 'bg-surface-2 ring-1 ring-accent/50' : 'bg-surface-2/50 hover:bg-surface-2'}`}
                 >
-                  <span lang={d?.language ?? undefined} className="indic block text-base">{s.quote_original}</span>
+                  <span lang={d?.language ?? undefined} className="indic block text-[15px]">{s.quote_original}</span>
                   {showEnglish && <span className="mt-0.5 block text-[13px] text-muted">English (machine-generated): {s.quote_en}</span>}
                   <span className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted">
                     <span className="indic">{d?.filename ?? s.document_id} · p.{s.page_no}</span>
@@ -114,20 +121,20 @@ export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, 
       </section>
 
       {!editing && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-          <Button variant="secondary" disabled={actions.busy || e.review_status === 'confirmed'} onClick={() => actions.review(e.id, 'confirmed')}>
+        <footer className="flex flex-wrap items-center gap-2 border-t border-line bg-surface px-4 py-2.5">
+          <Button size="sm" variant="secondary" disabled={actions.busy || e.review_status === 'confirmed'} onClick={() => actions.review(e.id, 'confirmed')}>
             Confirm <kbd className="ml-1 rounded bg-surface-2 px-1 text-[11px] text-muted">C</kbd>
           </Button>
-          <Button variant="danger" disabled={actions.busy || e.review_status === 'rejected'} onClick={() => actions.review(e.id, 'rejected')}>
+          <Button size="sm" variant="danger" disabled={actions.busy || e.review_status === 'rejected'} onClick={() => actions.review(e.id, 'rejected')}>
             Reject <kbd className="ml-1 rounded bg-surface-2 px-1 text-[11px] text-muted">X</kbd>
           </Button>
-          <Button variant="ghost" disabled={actions.busy} onClick={() => onEditingChange(true)}>
+          <Button size="sm" variant="ghost" disabled={actions.busy} onClick={() => onEditingChange(true)}>
             Correct <kbd className="ml-1 rounded bg-surface-2 px-1 text-[11px] text-muted">E</kbd>
           </Button>
           {e.review_status !== 'unreviewed' && (
-            <Button variant="ghost" disabled={actions.busy} onClick={() => actions.review(e.id, 'unreviewed')}>Reset</Button>
+            <Button size="sm" variant="ghost" disabled={actions.busy} onClick={() => actions.review(e.id, 'unreviewed')}>Reset</Button>
           )}
-        </div>
+        </footer>
       )}
     </div>
   );

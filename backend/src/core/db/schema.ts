@@ -131,7 +131,33 @@ CREATE TABLE IF NOT EXISTS api_cache (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS findings (
+  id TEXT PRIMARY KEY,
+  case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,                   -- missing_record | documentation_gap | timeline_conflict | possible_care_deviation
+  severity TEXT NOT NULL,                   -- critical | high | medium | low
+  title TEXT NOT NULL,
+  explanation TEXT NOT NULL,
+  evidence_event_ids_json TEXT NOT NULL DEFAULT '[]',
+  question_for_expert TEXT NOT NULL,
+  origin TEXT NOT NULL DEFAULT 'rule',      -- rule | llm
+  status TEXT NOT NULL DEFAULT 'open',      -- open | accepted | dismissed
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS briefs (
+  id TEXT PRIMARY KEY,
+  case_id TEXT NOT NULL UNIQUE REFERENCES cases(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content_md TEXT NOT NULL,
+  sections_json TEXT NOT NULL DEFAULT '{}',
+  output_language TEXT NOT NULL DEFAULT 'en-IN',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_blocks_page ON ocr_blocks (document_id, page_no, seq);
 CREATE INDEX IF NOT EXISTS idx_events_case ON events (case_id, seq);
 CREATE INDEX IF NOT EXISTS idx_sources_event ON event_sources (event_id);
+CREATE INDEX IF NOT EXISTS idx_findings_case ON findings (case_id);
 `;
