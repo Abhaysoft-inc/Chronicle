@@ -9,8 +9,11 @@
   "scripts": {
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
+    "dev:fake": "node scripts/dev-fake.ts",
+    "inspect:job": "node scripts/inspect-job.ts",
+    "refresh:ocr": "node scripts/refresh-ocr.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"tests/**/*.test.ts\"",
+    "test": "node --test \"src/**/*.test.ts\"",
     "spike:ocr": "node scripts/spike-ocr.ts"
   },
   "dependencies": {
@@ -19,5 +22,12 @@
     "multer": "^2.5.0",
     "pdf-lib": "^1.17.1",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
   }
 }
