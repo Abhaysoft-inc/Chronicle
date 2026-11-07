@@ -8,7 +8,9 @@ import { usePageData } from '@/features/viewer/use-page-data';
 import type { DocumentSummary, Timeline, TimelineEvent } from '@/lib/api/types';
 import { weakestConfidence } from '@/lib/confidence';
 import { revealWithin } from '@/lib/dom';
+import { humanize } from '@/lib/format';
 import { EventDetail } from './event-detail';
+import { AddEventForm } from './add-event-form';
 import { EventList } from './event-list';
 import { useEventActions } from './use-event-actions';
 
@@ -28,7 +30,8 @@ const KBD = 'rounded bg-surface-2 px-1';
  * The events list never grows when you select one, so you always see several events at once.
  * Keys: ↑/↓ or J/K move, C confirm, X reject, E correct. Click a box on the page to jump to its event.
  */
-export function TimelinePanel({ timeline, loading, error, documents, onChanged, onRetry }: {
+export function TimelinePanel({ caseId, timeline, loading, error, documents, onChanged, onRetry }: {
+  caseId: string;
   timeline: Timeline | undefined;
   loading: boolean;
   error: Error | undefined;
@@ -40,6 +43,10 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
   const [filter, setFilter] = useState<Filter>('all');
   const [pick, setPick] = useState<{ id?: string; source: number }>({ source: 0 });
   const [editing, setEditing] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [whoFilter, setWhoFilter] = useState('');
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [adding, setAdding] = useState(false);
   const actions = useEventActions(onChanged);
 
   // On wide screens the workbench fills the rest of the window, so nothing falls below the fold.
@@ -62,11 +69,17 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
   });
 
   const events = timeline?.events ?? [];
+  // Event kinds and who-recorded-it values that actually occur in this case, for the two dropdowns.
+  const typesPresent = [...new Set(events.map((e) => e.type))].sort();
+  const whoPresent = [...new Set(events.map((e) => e.actor_role).filter((w): w is string => !!w))].sort();
   const shown = events.filter((e) =>
-    filter === 'all' ? true
-    : filter === 'todo' ? e.review_status === 'unreviewed'
-    : filter === 'verified' ? e.verified
-    : !e.verified);
+    (filter === 'all' ? true
+      : filter === 'todo' ? e.review_status === 'unreviewed'
+      : filter === 'verified' ? e.verified
+      : !e.verified)
+    && (!typeFilter || e.type === typeFilter)
+    && (!whoFilter || e.actor_role === whoFilter)
+    && (showDuplicates || !e.duplicate_of));
   const selected = shown.find((e) => e.id === pick.id) ?? shown[0];
   const selectedIndex = selected ? shown.indexOf(selected) : -1;
   const sourceIndex = selected && pick.id === selected.id ? Math.min(pick.source, selected.sources.length - 1) : 0;
@@ -134,6 +147,11 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
     >
       {/* The page: where the evidence is */}
       <div className="flex min-h-0 flex-col lg:col-start-1 lg:row-span-2 lg:row-start-1 3xl:col-start-2 3xl:row-span-1">
+        {!source && selected && (
+          <div className="grid h-[30vh] place-items-center rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted lg:h-auto lg:flex-1">
+            {selected.origin === 'manual' ? 'This event was added by a reviewer, so there is no page to show.' : 'This event has no source page.'}
+          </div>
+        )}
         {doc && source && (
           <PageStage
             key={doc.id}
@@ -164,6 +182,24 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
               </button>
             ))}
           </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <select aria-label="Event type" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); select(undefined); }} className="h-7 rounded-md border border-line bg-surface px-1.5 text-xs">
+              <option value="">All types</option>
+              {typesPresent.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
+            </select>
+            {whoPresent.length > 0 && (
+              <select aria-label="Recorded by" value={whoFilter} onChange={(e) => { setWhoFilter(e.target.value); select(undefined); }} className="h-7 rounded-md border border-line bg-surface px-1.5 text-xs">
+                <option value="">Anyone</option>
+                {whoPresent.map((w) => <option key={w} value={w}>{w}</option>)}
+              </select>
+            )}
+            {(timeline?.duplicates ?? 0) > 0 && (
+              <label className="flex items-center gap-1 text-muted" title="Events that repeat another event (same text cited, or the same thing on the same day)">
+                <input type="checkbox" checked={showDuplicates} onChange={(e) => setShowDuplicates(e.target.checked)} /> Duplicates ({timeline?.duplicates})
+              </label>
+            )}
+            <button type="button" onClick={() => { setAdding(true); setEditing(false); }} className="ml-auto rounded-md px-2 py-1 font-medium text-accent hover:bg-accent/10">+ Add event</button>
+          </div>
           {filter === 'attention' && count('attention') > 0 && (
             <p className="mt-2 rounded-md bg-bad-bg px-2.5 py-1.5 text-xs text-bad">
               These cite text that was not found in the OCR output. Check them against the page; they are kept out of findings and the brief.
@@ -182,9 +218,16 @@ export function TimelinePanel({ timeline, loading, error, documents, onChanged, 
 
       {/* The selected event: facts, evidence, and the actions */}
       <section aria-label="Event details" className="min-h-0 overflow-hidden rounded-xl border border-line bg-surface lg:col-start-2 lg:row-start-2 3xl:col-start-3 3xl:row-start-1">
-        {selected ? (
+        {adding ? (
+          <AddEventForm
+            caseId={caseId}
+            onCancel={() => setAdding(false)}
+            onAdded={(added) => { setAdding(false); onChanged(); select(added.id); }}
+          />
+        ) : selected ? (
           <EventDetail
             key={selected.id}
+            onJumpTo={(label) => { const t = events.find((x) => x.label === label); if (t) { setShowDuplicates(true); select(t.id); } }}
             event={selected}
             documents={documents}
             sourceIndex={sourceIndex}

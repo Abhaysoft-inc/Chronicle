@@ -1,6 +1,6 @@
 import { request, requestBlob } from './client';
 import type {
-  AuthUser, Brief, CaseDetail, CaseSummary, DashboardData, Finding, FindingsData, FindingStatus, MeResult, PageData, PipelineSnapshot, PipelineStage, Timeline, UploadResult,
+  AuthUser, Brief, CaseDetail, CaseSummary, DashboardData, Finding, FindingsData, FindingStatus, MeResult, PageData, PipelineSnapshot, PipelineStage, Timeline, TimelineEvent, UploadResult,
 } from './types';
 
 // One function per backend endpoint. Components never build URLs themselves.
@@ -30,6 +30,9 @@ export const patchEvent = (
   eventId: string,
   body: { review_status?: 'confirmed' | 'rejected' | 'unreviewed'; corrections?: { summary_en?: string; raw_date?: string | null } },
 ) => request<{ id: string; review_status: string }>(`/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', json: body });
+
+export const addEvent = (caseId: string, input: { type: string; summary_en: string; raw_date: string | null; actor_role: string | null }) =>
+  request<TimelineEvent>(`/cases/${caseId}/events`, { method: 'POST', json: input });
 
 export const getPage = (documentId: string, page: number) => request<PageData>(`/documents/${documentId}/pages/${page}`);
 

@@ -13,6 +13,10 @@ const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ['pages', 'image_width', 'INTEGER'],
   ['pages', 'image_height', 'INTEGER'],
   ['cases', 'owner_id', 'TEXT'],
+  ['events', 'date_note', 'TEXT'],
+  ['events', 'duplicate_of', 'TEXT'],
+  ['events', 'origin', "TEXT NOT NULL DEFAULT 'extracted'"],
+  ['events', 'created_by', 'TEXT'],
 ];
 
 function migrate(db: Db): void {

@@ -1,4 +1,3 @@
-// Timeline module: read events with their sources, let a person correct them.
-// (Date normalisation, merging and conflict detection are pipeline stage 5, added next.)
+// Timeline module: events in date order with their sources, corrections, and manually added events.
 export { timelineRouter } from './timeline.routes.ts';
-export { listTimeline } from './timeline.service.ts';
+export { listTimeline, type TimelineEvent } from './timeline.service.ts';

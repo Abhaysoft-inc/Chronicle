@@ -51,7 +51,7 @@ export function PipelinePanel({ stages, running, hasDocuments, mode, starting, o
         </p>
       </div>
 
-      <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))]">
         {stages.map((s, i) => {
           const label = STAGE_LABELS[s.stage] ?? { title: s.stage, hint: '' };
           return (

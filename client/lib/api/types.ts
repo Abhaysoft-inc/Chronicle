@@ -78,16 +78,24 @@ export interface TimelineEvent {
   label: string;
   type: string;
   raw_date: string | null;
+  /** Sortable date: '2026-03-12' or '2026-03-12T22:00:00+05:30'. Null when no date could be read. */
   occurred_at_iso: string | null;
-  precision: string | null;
-  basis: string | null;
+  precision: 'minute' | 'hour' | 'part_of_day' | 'day' | 'month' | string | null;
+  /** 'stated' when read as written; 'inferred' when filled in (missing year, the page date, POD n). */
+  basis: 'stated' | 'inferred' | string | null;
+  /** Why a date is inferred or uncertain, in plain words. */
+  date_note: string | null;
   actor_role: string | null;
   summary_en: string;
   details: Record<string, string | number | null>;
   legibility: 'clear' | 'partial' | 'illegible' | string;
   review_status: ReviewStatus | string;
   corrected: { summary_en?: string; raw_date?: string | null; details?: Record<string, unknown> } | null;
-  /** True only when every cited quote was found in the OCR text. */
+  /** 'manual' when a reviewer added it by hand. */
+  origin: 'extracted' | 'manual';
+  /** Label of the first copy when this event repeats another (e.g. 'E003'). */
+  duplicate_of: string | null;
+  /** True when every cited quote was found in the OCR text, or a person added the event. */
   verified: boolean;
   sources: SourceRef[];
 }
@@ -96,6 +104,8 @@ export interface Timeline {
   events: TimelineEvent[];
   total: number;
   verified: number;
+  duplicates: number;
+  undated: number;
 }
 
 export interface OcrBlock {

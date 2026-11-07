@@ -6,6 +6,7 @@ import { ingestCase } from '../documents/index.ts';
 import { extractCase } from '../extraction/index.ts';
 import { ocrCase } from '../ocr/index.ts';
 import { verifyCase } from '../verification/index.ts';
+import { normaliseCase } from '../normalisation/index.ts';
 import { runFindings } from '../findings/index.ts';
 import { generateBrief } from '../brief/index.ts';
 import { publishProgress, type ProgressSnapshot, type ProgressStage } from './pipeline.events.ts';
@@ -24,6 +25,10 @@ const STAGE_FNS: [name: string, fn: StageFn][] = [
   ['verify', (ctx, id) => {
     const { checked, failed } = verifyCase(ctx, id);
     return `${checked} quote(s) checked, ${failed} failed verification`;
+  }],
+  ['normalise', (ctx, id) => {
+    const { dated, undated, duplicates } = normaliseCase(ctx, id);
+    return `${dated} event(s) dated, ${undated} undated, ${duplicates} duplicate(s) linked`;
   }],
   ['findings', async (ctx, id) => {
     const { count } = await runFindings(ctx, id);

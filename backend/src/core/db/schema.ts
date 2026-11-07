@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS events (
   legibility TEXT NOT NULL DEFAULT 'clear',
   review_status TEXT NOT NULL DEFAULT 'unreviewed', -- unreviewed | confirmed | rejected | corrected
   corrected_json TEXT,
+  date_note TEXT,                          -- why a date is inferred or uncertain, in plain words
+  duplicate_of TEXT,                        -- id of the first copy when this event repeats another
+  origin TEXT NOT NULL DEFAULT 'extracted', -- extracted | manual (added by a reviewer)
+  created_by TEXT,                          -- user who added a manual event
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   UNIQUE (case_id, seq)
 );

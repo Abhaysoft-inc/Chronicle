@@ -154,6 +154,7 @@ export function CaseWorkspace({ caseId }: { caseId: string }) {
 
       {tab === 'timeline' && (
         <TimelinePanel
+          caseId={caseId}
           timeline={timeline.data}
           loading={timeline.loading}
           error={timeline.error}

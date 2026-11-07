@@ -6,14 +6,14 @@ import { TextInput } from '@/components/ui/field';
 import { Pill } from '@/components/ui/pill';
 import type { DocumentSummary, TimelineEvent } from '@/lib/api/types';
 import { confidenceLevel } from '@/lib/confidence';
-import { humanize, nearlySame, verifyReasonText } from '@/lib/format';
+import { formatEventDate, humanize, nearlySame, verifyReasonText } from '@/lib/format';
 import type { EventActions } from './use-event-actions';
 
 /**
  * The selected event, in its own panel: the facts at the top, the evidence in a scrolling middle,
  * and the actions pinned at the bottom so they never scroll out of reach.
  */
-export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, activeConfidence, actions, editing, onEditingChange }: {
+export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, activeConfidence, actions, editing, onEditingChange, onJumpTo }: {
   event: TimelineEvent;
   documents: DocumentSummary[];
   sourceIndex: number;
@@ -23,10 +23,13 @@ export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, 
   actions: EventActions;
   editing: boolean;
   onEditingChange: (v: boolean) => void;
+  /** Select another event by its label (used by the "repeats E003" link). */
+  onJumpTo?: (label: string) => void;
 }) {
   const [draft, setDraft] = useState<{ summary: string; date: string } | null>(null);
   const summary = e.corrected?.summary_en ?? e.summary_en;
   const date = e.corrected?.raw_date !== undefined ? e.corrected.raw_date : e.raw_date;
+  const when = formatEventDate(e.occurred_at_iso, e.precision);
   const details = Object.entries(e.details).filter(([, v]) => v !== null && v !== '');
   const failing = e.sources.filter((s) => !s.verified);
   const level = confidenceLevel(activeConfidence);
@@ -67,9 +70,17 @@ export function EventDetail({ event: e, documents, sourceIndex, onSourceChange, 
             <h3 className="mt-2 text-base leading-snug font-semibold">{summary}</h3>
             {e.corrected && <p className="mt-0.5 text-xs text-warn">Edited by a person. Original: {e.summary_en}</p>}
             <p className="mt-1 text-[13px] text-muted">
-              {date ? <>Date as written: <b className="indic font-semibold text-fg">{date}</b></> : 'No date recorded'}
+              {when ? <b className="font-semibold text-fg">{e.basis === 'inferred' ? '≈ ' : ''}{when}</b> : 'No date in the records'}
+              {date && <> · as written: <span className="indic">{date}</span></>}
               {e.actor_role && <> · {e.actor_role}</>}
             </p>
+            {e.date_note && <p className="mt-0.5 text-xs text-muted">Date note: {e.date_note}.</p>}
+            {e.origin === 'manual' && <p className="mt-1 text-xs font-medium text-accent">✚ Added by a reviewer, not read from a document.</p>}
+            {e.duplicate_of && (
+              <p className="mt-1 text-xs text-muted">
+                Repeats <button type="button" className="font-semibold text-accent underline" onClick={() => onJumpTo?.(e.duplicate_of!)}>{e.duplicate_of}</button>: same text cited, or the same thing on the same day. Counted once in findings and the brief.
+              </p>
+            )}
             {details.length > 0 && (
               <dl className="mt-2 flex flex-wrap gap-1.5">
                 {details.map(([k, v]) => (

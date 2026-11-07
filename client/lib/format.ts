@@ -57,8 +57,34 @@ export const STAGE_LABELS: Record<string, { title: string; hint: string }> = {
   ocr: { title: 'Read', hint: 'Sarvam OCR reads every page' },
   extract: { title: 'Extract', hint: 'Find clinical events' },
   verify: { title: 'Verify', hint: 'Check each quote against the OCR text' },
+  normalise: { title: 'Order', hint: 'Date every event, link duplicates' },
+  facts: { title: 'Facts', hint: 'Patient, hospital, doctors, diagnoses' },
+  findings: { title: 'Check', hint: 'Flag gaps, conflicts, possible deviations' },
+  brief: { title: 'Brief', hint: 'Compile the expert brief' },
 };
 
 export function stageTone(status: string): Tone {
   return status === 'done' ? 'ok' : status === 'failed' ? 'bad' : status === 'running' ? 'info' : 'neutral';
+}
+
+/** How an event's date reads in the timeline: "Thu, 12 Mar 2026" or "12 Mar 2026, 22:00". No timezone shift. */
+export function formatEventDate(iso: string | null, precision: string | null): string | null {
+  if (!iso) return null;
+  const [y, m, d] = [Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10))];
+  const day = new Date(Date.UTC(y, m - 1, d));
+  if (precision === 'day' || iso.length <= 10) {
+    return day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  }
+  const time = iso.slice(11, 16);
+  if (precision === 'part_of_day') {
+    const h = Number(time.slice(0, 2));
+    return `${day.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${h < 12 ? 'morning' : h < 16 ? 'afternoon' : h < 20 ? 'evening' : 'night'}`;
+  }
+  return `${day.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}, ${time}`;
+}
+
+/** Group heading for a day: "Thursday, 12 March 2026". */
+export function formatDayHeading(isoDay: string): string {
+  const [y, m, d] = [Number(isoDay.slice(0, 4)), Number(isoDay.slice(5, 7)), Number(isoDay.slice(8, 10))];
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
