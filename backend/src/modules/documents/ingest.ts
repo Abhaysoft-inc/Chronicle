@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import AdmZip from 'adm-zip';
 import { PDFDocument } from 'pdf-lib';
 import { all, get, newId, run, tx } from '../../core/db/index.ts';
 import { chunksDir, type Ctx } from '../../core/context.ts';
@@ -14,12 +15,33 @@ export const ALLOWED_MIME: Record<string, string> = {
   'application/pdf': '.pdf',
   'image/jpeg': '.jpg',
   'image/png': '.png',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
 };
 
 export class IngestError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'IngestError';
+  }
+}
+
+/** Extract paragraphs and text from a DOCX document (OpenXML). */
+export function parseDocx(bytes: Uint8Array): { paragraphs: string[]; text: string } {
+  try {
+    const zip = new AdmZip(Buffer.from(bytes));
+    const entry = zip.getEntry('word/document.xml');
+    if (!entry) return { paragraphs: [], text: '' };
+    const xml = entry.getData().toString('utf8');
+    const pMatches = xml.match(/<w:p(?:\s|>)[^]*?<\/w:p>/g) ?? [];
+    const paragraphs: string[] = [];
+    for (const p of pMatches) {
+      const texts = [...p.matchAll(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g)].map((m) => m[1]);
+      const line = texts.join('').trim();
+      if (line) paragraphs.push(line);
+    }
+    return { paragraphs, text: paragraphs.join('\n') };
+  } catch {
+    return { paragraphs: [], text: '' };
   }
 }
 

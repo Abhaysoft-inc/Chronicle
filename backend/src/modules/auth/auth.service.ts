@@ -10,6 +10,8 @@ export const SignupInput = z.object({
   name: z.string().trim().min(1, 'Enter your name').max(80),
   email: z.string().trim().toLowerCase().email('Enter a valid email address').max(254),
   password: z.string().min(8, 'Use at least 8 characters').max(128, 'Use at most 128 characters'),
+  role: z.enum(['lawyer', 'expert', 'investigator', 'admin', 'organization']).default('lawyer').optional(),
+  specialty: z.string().trim().max(100).optional(),
 });
 
 export const LoginInput = z.object({
@@ -50,32 +52,45 @@ export async function signup(ctx: Ctx, raw: unknown): Promise<{ user: AuthUser; 
   }
   const passwordHash = await hashPassword(input.password);
   const id = newId('u');
+  const role = input.role || 'lawyer';
+  const specialty = input.specialty || null;
   const session = tx(ctx.db, () => {
     const isFirstUser = get<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM users')!.n === 0;
-    run(ctx.db, 'INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)', id, input.email, input.name, passwordHash);
+    run(
+      ctx.db,
+      'INSERT INTO users (id, email, name, password_hash, role, specialty) VALUES (?, ?, ?, ?, ?, ?)',
+      id, input.email, input.name, passwordHash, role, specialty,
+    );
     // Cases created before accounts existed have no owner. The first person to sign up adopts them.
     if (isFirstUser) run(ctx.db, 'UPDATE cases SET owner_id = ? WHERE owner_id IS NULL', id);
     return createSession(ctx, id);
   });
-  return { user: { id, email: input.email, name: input.name }, session };
+  return { user: { id, email: input.email, name: input.name, role, specialty }, session };
 }
 
 /** Create a user without a request (tests, the fake dev server). */
-export async function createUser(ctx: Ctx, name: string, email: string, password: string): Promise<AuthUser> {
-  const input = SignupInput.parse({ name, email, password });
+export async function createUser(ctx: Ctx, name: string, email: string, password: string, role = 'lawyer'): Promise<AuthUser> {
+  const input = SignupInput.parse({ name, email, password, role });
   const id = newId('u');
-  run(ctx.db, 'INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)', id, input.email, input.name, await hashPassword(input.password));
-  return { id, email: input.email, name: input.name };
+  run(ctx.db, 'INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, ?, ?, ?)', id, input.email, input.name, await hashPassword(input.password), role);
+  return { id, email: input.email, name: input.name, role };
 }
 
 export async function login(ctx: Ctx, raw: unknown): Promise<{ user: AuthUser; session: Session }> {
   const input = LoginInput.parse(raw);
-  const row = get<UserRow>(ctx.db, 'SELECT id, email, name, password_hash FROM users WHERE email = ?', input.email);
+  const row = get<UserRow & { role?: string; specialty?: string; org_id?: string }>(
+    ctx.db,
+    'SELECT id, email, name, role, specialty, org_id, password_hash FROM users WHERE email = ?',
+    input.email,
+  );
   const ok = row ? await verifyPassword(input.password, row.password_hash) : await verifyAgainstDummy(input.password);
   // One message for "no such account" and "wrong password", so the form cannot be used to find accounts.
   if (!row || !ok) throw new AppError(401, 'invalid_credentials', 'Incorrect email or password.');
   purgeExpired(ctx);
-  return { user: { id: row.id, email: row.email, name: row.name }, session: createSession(ctx, row.id) };
+  return {
+    user: { id: row.id, email: row.email, name: row.name, role: row.role || 'lawyer', specialty: row.specialty, org_id: row.org_id },
+    session: createSession(ctx, row.id),
+  };
 }
 
 export function logout(ctx: Ctx, token: string): void {
@@ -87,9 +102,9 @@ export function logout(ctx: Ctx, token: string): void {
  * used is extended, so people who keep working are not signed out mid-review.
  */
 export function readSession(ctx: Ctx, token: string): { user: AuthUser; extended: Session | null } | null {
-  const row = get<AuthUser & { expires_at: string }>(
+  const row = get<AuthUser & { expires_at: string; role?: string; specialty?: string; org_id?: string }>(
     ctx.db,
-    `SELECT u.id, u.email, u.name, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
+    `SELECT u.id, u.email, u.name, u.role, u.specialty, u.org_id, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
     sha256(token),
   );
   if (!row) return null;
@@ -98,11 +113,19 @@ export function readSession(ctx: Ctx, token: string): { user: AuthUser; extended
     logout(ctx, token);
     return null;
   }
+  const user: AuthUser = {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role || 'lawyer',
+    specialty: row.specialty,
+    org_id: row.org_id,
+  };
   const total = ctx.config.SESSION_DAYS * DAY;
   if (expires - Date.now() < total / 2) {
     const newExpiry = new Date(Date.now() + total);
     run(ctx.db, 'UPDATE sessions SET expires_at = ? WHERE token_hash = ?', newExpiry.toISOString(), sha256(token));
-    return { user: { id: row.id, email: row.email, name: row.name }, extended: { token, expiresAt: newExpiry } };
+    return { user, extended: { token, expiresAt: newExpiry } };
   }
-  return { user: { id: row.id, email: row.email, name: row.name }, extended: null };
+  return { user, extended: null };
 }

@@ -10,7 +10,7 @@ export const EVENT_TYPES = [
 export const DOC_TYPES = [
   'doctor_notes', 'nursing_chart', 'prescription', 'lab_report', 'imaging_report',
   'consent_form', 'operation_notes', 'anaesthesia_record', 'discharge_summary',
-  'death_summary', 'bill', 'other',
+  'death_summary', 'bill', 'diagnostic_report', 'referral_note', 'other',
 ] as const;
 
 export const LEGIBILITY = ['clear', 'partial', 'illegible'] as const;

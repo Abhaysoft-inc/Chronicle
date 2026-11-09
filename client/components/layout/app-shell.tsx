@@ -5,11 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/features/auth/auth-context';
 import { ApiStatus, ConnectionButton } from './connection-controls';
-import { IconClose, IconDashboard, IconFolder, IconLogOut, IconMenu } from './nav-icons';
+import { IconClose, IconDashboard, IconFolder, IconLogOut, IconMarketplace, IconMenu, IconSettings } from './nav-icons';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: IconDashboard },
   { href: '/cases', label: 'Cases', icon: IconFolder },
+  { href: '/marketplace', label: 'Expert Marketplace', icon: IconMarketplace },
+  { href: '/admin', label: 'Enterprise & SaaS', icon: IconSettings },
 ] as const;
 
 function initials(name: string): string {

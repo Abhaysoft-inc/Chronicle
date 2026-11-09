@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Sign in · Chronicle" };
 export default function LoginPage() {
   return (
     <RedirectIfAuthed>
-      <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+      <h1 className="font-display text-3xl font-medium tracking-tight">Welcome back</h1>
       <p className="mt-1.5 mb-7 text-sm text-muted">Sign in to continue to your cases.</p>
       <AuthForm mode="login" />
     </RedirectIfAuthed>

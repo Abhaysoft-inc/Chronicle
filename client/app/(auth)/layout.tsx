@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div aria-hidden="true" className="absolute -top-24 -right-24 size-96 rounded-full bg-white/10 blur-3xl" />
         <div aria-hidden="true" className="absolute -bottom-32 -left-16 size-96 rounded-full bg-black/10 blur-3xl" />
         <div className="relative max-w-md">
-          <h2 className="text-3xl leading-tight font-semibold tracking-tight text-balance">
+          <h2 className="font-display text-4xl leading-tight font-medium tracking-tight text-balance">
             Review records with evidence you can check.
           </h2>
           <ul className="mt-10 flex flex-col gap-7">

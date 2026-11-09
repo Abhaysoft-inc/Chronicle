@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
-import { getBriefMarkdown } from '@/lib/api/endpoints';
+import { getBriefDocx, getBriefHtml, getBriefMarkdown } from '@/lib/api/endpoints';
 import type { Brief } from '@/lib/api/types';
 
 export function BriefPanel({
@@ -18,6 +18,7 @@ export function BriefPanel({
 }) {
   const notify = useToast();
   const [downloading, setDownloading] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
 
   async function copyMarkdown() {
@@ -41,11 +42,41 @@ export function BriefPanel({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      notify('Brief downloaded successfully.', 'ok');
+      notify('Brief downloaded successfully (.md).', 'ok');
     } catch (err) {
       notify((err as Error).message, 'bad');
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function downloadDocx() {
+    setDownloadingDocx(true);
+    try {
+      const blob = await getBriefDocx(caseId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `expert-brief-${caseId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      notify('Word Document downloaded successfully (.docx).', 'ok');
+    } catch (err) {
+      notify((err as Error).message, 'bad');
+    } finally {
+      setDownloadingDocx(false);
+    }
+  }
+
+  async function openPrintableHtml() {
+    try {
+      const blob = await getBriefHtml(caseId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      notify((err as Error).message, 'bad');
     }
   }
 
@@ -73,13 +104,19 @@ export function BriefPanel({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="sm" loading={regenerating} onClick={handleRegenerate}>
-            Regenerate Brief
+            Regenerate
           </Button>
           <Button variant="secondary" size="sm" onClick={copyMarkdown}>
-            Copy Markdown
+            Copy MD
+          </Button>
+          <Button variant="secondary" size="sm" onClick={openPrintableHtml}>
+            Print / PDF
+          </Button>
+          <Button variant="secondary" size="sm" loading={downloadingDocx} onClick={downloadDocx}>
+            Export .docx
           </Button>
           <Button variant="primary" size="sm" loading={downloading} onClick={downloadMarkdown}>
-            Download .md
+            Export .md
           </Button>
         </div>
       </div>

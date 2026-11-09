@@ -354,14 +354,100 @@ export function listFindings(ctx: Ctx, caseId: string): { findings: Finding[]; s
   return { findings, summary };
 }
 
-export function patchFinding(ctx: Ctx, findingId: string, status: FindingStatus): Finding {
-  const row = get<FindingRow>(ctx.db, 'SELECT * FROM findings WHERE id = ?', findingId);
+export function patchFinding(
+  ctx: Ctx,
+  findingId: string,
+  patchOrStatus: FindingStatus | { status?: FindingStatus; note?: string; edit?: { title?: string; explanation?: string; severity?: FindingSeverity } },
+  userId?: string,
+): Finding {
+  const row = get<FindingRow & { expert_note?: string; edited_json?: string }>(ctx.db, 'SELECT * FROM findings WHERE id = ?', findingId);
   if (!row) throw notFound(`Finding ${findingId}`);
 
-  run(ctx.db, 'UPDATE findings SET status = ? WHERE id = ?', status, findingId);
+  const patch = typeof patchOrStatus === 'string' ? { status: patchOrStatus } : patchOrStatus;
+  const newStatus = patch.status ?? row.status;
+  const newNote = patch.note !== undefined ? patch.note : (row.expert_note || null);
+  const newEditJson = patch.edit ? JSON.stringify(patch.edit) : (row.edited_json || null);
+
+  const title = patch.edit?.title ?? row.title;
+  const explanation = patch.edit?.explanation ?? row.explanation;
+  const severity = patch.edit?.severity ?? row.severity;
+
+  run(
+    ctx.db,
+    `UPDATE findings SET
+      status = ?,
+      expert_note = ?,
+      edited_json = ?,
+      title = ?,
+      explanation = ?,
+      severity = ?,
+      reviewed_by = ?,
+      reviewed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+     WHERE id = ?`,
+    newStatus, newNote, newEditJson, title, explanation, severity, userId ?? null, findingId,
+  );
+
+  // Record audit trail in finding_reviews
+  const action = patch.edit ? 'edited' : (patch.note ? 'noted' : newStatus);
+  run(
+    ctx.db,
+    `INSERT INTO finding_reviews (finding_id, user_id, action, note)
+     VALUES (?, ?, ?, ?)`,
+    findingId, userId ?? null, action, patch.note ?? null,
+  );
+
   return {
     ...row,
+    title,
+    explanation,
+    severity,
     evidence_event_ids: JSON.parse(row.evidence_event_ids_json || '[]') as string[],
-    status,
+    status: newStatus,
+    expert_note: newNote ?? undefined,
+  };
+}
+
+export function createExpertFinding(
+  ctx: Ctx,
+  caseId: string,
+  input: {
+    category: FindingCategory;
+    severity: FindingSeverity;
+    title: string;
+    explanation: string;
+    question_for_expert?: string;
+    evidence_event_ids?: string[];
+  },
+  userId: string,
+): Finding {
+  requireCase(ctx.db, caseId);
+  const id = newId('f');
+  run(
+    ctx.db,
+    `INSERT INTO findings (id, case_id, category, severity, title, explanation, evidence_event_ids_json, question_for_expert, origin, status, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'expert', 'open', ?)`,
+    id, caseId, input.category, input.severity, input.title, input.explanation,
+    JSON.stringify(input.evidence_event_ids ?? []), input.question_for_expert ?? '', userId,
+  );
+
+  run(
+    ctx.db,
+    `INSERT INTO finding_reviews (finding_id, user_id, action, note)
+     VALUES (?, ?, 'created', ?)`,
+    id, userId, 'Expert observation added',
+  );
+
+  return {
+    id,
+    case_id: caseId,
+    category: input.category,
+    severity: input.severity,
+    title: input.title,
+    explanation: input.explanation,
+    evidence_event_ids: input.evidence_event_ids ?? [],
+    question_for_expert: input.question_for_expert ?? '',
+    origin: 'expert',
+    status: 'open',
+    created_at: new Date().toISOString(),
   };
 }

@@ -49,8 +49,33 @@ export interface PageIssue {
   warning: string | null;
 }
 
+export interface CaseMetadata {
+  case_id: string;
+  patient_name: string | null;
+  patient_age: number | null;
+  patient_gender: string | null;
+  incident_date: string | null;
+  admission_date: string | null;
+  discharge_date: string | null;
+  hospital_name: string | null;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface CaseAssignment {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  role: 'lawyer' | 'expert' | 'investigator';
+  assigned_at: string;
+}
+
 export interface CaseDetail {
   case: CaseSummary;
+  metadata?: CaseMetadata | null;
+  assignments?: CaseAssignment[];
   documents: DocumentSummary[];
   pipeline: PipelineStage[];
   /** Pages that were NOT analysed. A missing page must never be read as missing care. */
@@ -147,6 +172,9 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  role?: string;
+  org_id?: string | null;
+  specialty?: string | null;
 }
 
 export interface MeResult {
@@ -230,5 +258,165 @@ export interface Brief {
   output_language: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ChecklistItem {
+  doc_type: string;
+  status: 'missing' | 'requested' | 'received' | 'unavailable' | 'present';
+  reason: string;
+  found_on: { document_id: string; filename: string; pages: number[] }[];
+  note: string | null;
+  updated_by_name: string | null;
+  updated_at: string | null;
+}
+
+export interface CopilotReference {
+  document_id?: string;
+  filename?: string;
+  page_no?: number;
+  block_id?: string;
+  quote?: string;
+  event_label?: string;
+}
+
+export interface CopilotMessage {
+  id: string;
+  case_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  references: CopilotReference[];
+  created_at: string;
+}
+
+export interface AudioRecord {
+  id: string;
+  case_id: string;
+  filename: string;
+  transcript: string;
+  diarization: { speaker_id: string; transcript: string; start_time_seconds: number; end_time_seconds: number }[];
+  language_code: string;
+  status: string;
+  created_at: string;
+}
+
+export interface CaseComment {
+  id: string;
+  case_id: string;
+  user_id: string;
+  user_name: string;
+  target_type: 'case' | 'finding' | 'event';
+  target_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ActivityLogItem {
+  id: string;
+  case_id: string;
+  user_id: string | null;
+  user_name: string | null;
+  action: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PendingReviews {
+  open_findings: number;
+  unreviewed_events: number;
+  missing_records: number;
+  ready_for_expert_signoff: boolean;
+}
+
+export interface ExpertProfile {
+  user_id: string;
+  name: string;
+  email: string;
+  specialty: string;
+  experience_years: number;
+  medical_council_no: string | null;
+  fee_per_case: number;
+  bio: string;
+  status: string;
+  rating: number;
+  updated_at: string;
+}
+
+export interface ReviewRequest {
+  id: string;
+  case_id: string;
+  case_title: string;
+  expert_id: string;
+  expert_name: string;
+  requester_id: string;
+  requester_name: string;
+  status: 'requested' | 'accepted' | 'declined' | 'completed';
+  fee: number;
+  commission: number;
+  scheduled_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface DiscrepancyItem {
+  item: string;
+  category: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  issue: string;
+  billed_amount?: number;
+}
+
+export interface InsuranceClaimResult {
+  id: string;
+  case_id: string;
+  claim_no: string;
+  policy_no: string | null;
+  insurer: string | null;
+  billed_amount: number;
+  approved_amount: number;
+  fraud_risk_score: number;
+  status: 'pending' | 'under_investigation' | 'approved' | 'flagged';
+  discrepancies: DiscrepancyItem[];
+  report_md: string;
+  created_at: string;
+}
+
+export interface ClinicalAuditResult {
+  id: string;
+  case_id: string;
+  completeness_score: number;
+  nursing_consistency_score: number;
+  missing_observations: string[];
+  adverse_events: string[];
+  audit_report_md: string;
+  created_at: string;
+}
+
+export interface OrganizationInfo {
+  id: string;
+  name: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  quota_pages: number;
+  pages_used: number;
+  created_at: string;
+}
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  prefix: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+export interface UsageAnalytics {
+  organization: OrganizationInfo;
+  usage: {
+    cases_count: number;
+    documents_count: number;
+    pages_processed: number;
+    audio_recordings_count: number;
+    quota_remaining: number;
+    quota_percentage: number;
+  };
 }
 

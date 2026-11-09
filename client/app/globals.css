@@ -1,23 +1,25 @@
 @import "tailwindcss";
 
 /* Design tokens. Light by default, dark follows the OS. Components use the semantic names
-   (surface, line, ok, bad...) so a theme change is a change in this one block. */
+   (surface, line, ok, bad...) so a theme change is a change in this one block.
+   The palette follows sarvam.ai: near-white warm neutrals, #1f1f1f ink, indigo as the one brand colour,
+   and their green / red / amber scales for status. */
 :root {
-  --bg: #f6f7f9;
+  --bg: #fcfcfc;
   --surface: #ffffff;
-  --surface-2: #f2f4f7;
-  --fg: #101828;
-  --muted: #566070;
-  --line: #e4e7ec;
-  --accent: #1d5bbf;
+  --surface-2: #f5f5f5;
+  --fg: #1f1f1f;
+  --muted: #666666;
+  --line: #e6e6e6;
+  --accent: #4250d5;
   --accent-fg: #ffffff;
-  --ok: #067647;
-  --ok-bg: #ecfdf3;
-  --bad: #b42318;
-  --bad-bg: #fef3f2;
-  --warn: #93370d;
-  --warn-bg: #fffaeb;
-  --hl: #fff2a8;
+  --ok: #496d21;
+  --ok-bg: #f2f8eb;
+  --bad: #a21913;
+  --bad-bg: #fde7e2;
+  --warn: #6b4c1c;
+  --warn-bg: #fff8e6;
+  --hl: #ffe8b7;
 
   /* Chart colours (the validated data-viz palette). One blue for a single data series; the status
      colours are fixed and always shown with an icon and a label, never as colour alone. */
@@ -31,21 +33,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --surface-2: #1d242d;
-    --fg: #eef0f3;
-    --muted: #b0b8c5;
-    --line: #2a313c;
-    --accent: #6ea0ff;
-    --accent-fg: #0b1220;
-    --ok: #6ce9a6;
-    --ok-bg: #0f2a1c;
-    --bad: #fda29b;
-    --bad-bg: #3a1512;
-    --warn: #fec84b;
-    --warn-bg: #3a2a0b;
-    --hl: #4d4510;
+    --bg: #141414;
+    --surface: #1c1c1c;
+    --surface-2: #262626;
+    --fg: #faf8f5;
+    --muted: #b3b3b3;
+    --line: #333333;
+    --accent: #a7c0f1;
+    --accent-fg: #11115b;
+    --ok: #acd587;
+    --ok-bg: #152605;
+    --bad: #eba18f;
+    --bad-bg: #3e140b;
+    --warn: #ffcb79;
+    --warn-bg: #362813;
+    --hl: #6b4c1c;
     --viz-1: #3987e5;
     --viz-neutral: #4a4a46;
     --viz-neutral-ink: #ffffff;
@@ -79,8 +81,12 @@
   --color-viz-warn: var(--viz-warn);
   --color-viz-crit: var(--viz-crit);
   --color-viz-neutral: var(--viz-neutral);
-  --font-sans: var(--font-geist-sans), "Nirmala UI", "Noto Sans Devanagari", system-ui, sans-serif;
+  --font-sans: var(--font-body-src), "Nirmala UI", "Noto Sans Devanagari", system-ui, sans-serif;
+  --font-display: var(--font-display-src), "Nirmala UI", "Noto Serif Devanagari", Georgia, serif;
   --font-mono: var(--font-geist-mono), ui-monospace, Consolas, monospace;
+
+  /* Sarvam's card radius is 1rem, buttons and pills are fully round, and everything eases on one curve. */
+  --ease-sarvam: cubic-bezier(0.2, 0, 0, 1);
 }
 
 html { scroll-behavior: smooth; }
@@ -91,12 +97,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Large headings are set in the serif display face, medium weight, tight tracking, like sarvam.ai.
+   Page titles (h1) get it everywhere; sections opt in with the font-display utility. */
+h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
 /* Text that came from OCR in an Indian script. Needs fonts that carry those scripts and a
    taller line height so vowel signs and conjuncts are not clipped. */
 .indic {
   font-family: "Nirmala UI", "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Telugu",
     "Noto Sans Bengali", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam",
-    "Noto Sans Gurmukhi", "Noto Sans Oriya", "Mangal", var(--font-geist-sans), system-ui, sans-serif;
+    "Noto Sans Gurmukhi", "Noto Sans Oriya", "Mangal", var(--font-body-src), system-ui, sans-serif;
   line-height: 1.7;
 }
 

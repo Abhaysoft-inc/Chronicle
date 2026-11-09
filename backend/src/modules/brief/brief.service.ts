@@ -1,3 +1,4 @@
+import AdmZip from 'adm-zip';
 import type { Ctx } from '../../core/context.ts';
 import { all, get, newId, run } from '../../core/db/index.ts';
 import { requireCase } from '../../core/db/lookups.ts';
@@ -202,4 +203,98 @@ export function getBrief(ctx: Ctx, caseId: string): Brief {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+/** Generates a standard Microsoft Word DOCX file from the brief markdown. */
+export function exportBriefDocx(brief: Brief): Buffer {
+  const zip = new AdmZip();
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const lines = brief.content_md.split('\n');
+  const paragraphsXml = lines
+    .map((line) => {
+      const clean = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+      if (!clean) return '<w:p/>';
+      if (clean.startsWith('# ')) {
+        return `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/></w:rPr><w:t>${clean.slice(2)}</w:t></w:r></w:p>`;
+      }
+      if (clean.startsWith('## ')) {
+        return `<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>${clean.slice(3)}</w:t></w:r></w:p>`;
+      }
+      if (clean.startsWith('### ')) {
+        return `<w:p><w:pPr><w:pStyle w:val="Heading3"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="24"/></w:rPr><w:t>${clean.slice(4)}</w:t></w:r></w:p>`;
+      }
+      return `<w:p><w:r><w:t>${clean}</w:t></w:r></w:p>`;
+    })
+    .join('');
+
+  const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${paragraphsXml}
+  </w:body>
+</w:document>`;
+
+  zip.addFile('[Content_Types].xml', Buffer.from(contentTypes, 'utf8'));
+  zip.addFile('_rels/.rels', Buffer.from(rootRels, 'utf8'));
+  zip.addFile('word/document.xml', Buffer.from(docXml, 'utf8'));
+  return zip.toBuffer();
+}
+
+/** Generates clean printable HTML format for PDF printing. */
+export function exportBriefHtml(brief: Brief, caseTitle: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${caseTitle} - MedLex Medical-Legal Brief</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1e293b; }
+    h1 { font-size: 24px; border-bottom: 2px solid #0284c7; padding-bottom: 8px; color: #0f172a; }
+    h2 { font-size: 20px; margin-top: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; color: #1e293b; }
+    h3 { font-size: 16px; margin-top: 24px; color: #334155; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    strong { color: #0f172a; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: #e0f2fe; color: #0369a1; }
+    .footer { margin-top: 50px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; }
+    @media print {
+      body { margin: 0; padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+    <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+      Print or Save as PDF
+    </button>
+    <span style="font-size: 13px; color: #64748b;">MedLex Medical-Legal Intelligence Platform</span>
+  </div>
+  <div>
+    ${brief.content_md
+      .replace(/# (.*)/g, '<h1>$1</h1>')
+      .replace(/## (.*)/g, '<h2>$1</h2>')
+      .replace(/### (.*)/g, '<h3>$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^- (.*)/gm, '<li>$1</li>')
+      .replace(/\n\n/g, '<p></p>')
+    }
+  </div>
+  <div class="footer">
+    MedLex Intelligence Platform | Generated on ${brief.created_at.slice(0, 10)} | Confidential & Privileged Document
+  </div>
+</body>
+</html>`;
 }

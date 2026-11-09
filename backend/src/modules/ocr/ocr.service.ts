@@ -38,17 +38,36 @@ export async function ocrCase(ctx: Ctx, caseId: string): Promise<{ failedChunks:
   let failed = 0;
   for (const ch of chunks) {
     try {
-      const result = await ctx.cache.through<ParseResult>(
-        'docai.parse',
-        hashOf('parse', ch.sha256, ch.language ?? ''),
-        () =>
-          ctx.docai.parse({
-            bytes: fs.readFileSync(ch.path),
-            filename: `${ch.document_id}_${ch.idx}${ch.mime === 'application/pdf' ? '.pdf' : ''}`,
-            mime: ch.mime,
-            language: ch.language,
-          }),
-      );
+      let result: ParseResult;
+      if (ch.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const { parseDocx } = await import('../documents/ingest.ts');
+        const { paragraphs } = parseDocx(fs.readFileSync(ch.path));
+        result = {
+          jobId: `docx-${ch.id}`,
+          status: 'completed',
+          blocks: paragraphs.map((text, idx) => ({
+            page: 1,
+            text,
+            tag: idx === 0 ? 'header' : 'paragraph',
+            bbox: null,
+            bboxNorm: null,
+            confidence: 1.0,
+          })),
+          pageCount: 1,
+        };
+      } else {
+        result = await ctx.cache.through<ParseResult>(
+          'docai.parse',
+          hashOf('parse', ch.sha256, ch.language ?? ''),
+          () =>
+            ctx.docai.parse({
+              bytes: fs.readFileSync(ch.path),
+              filename: `${ch.document_id}_${ch.idx}${ch.mime === 'application/pdf' ? '.pdf' : ''}`,
+              mime: ch.mime,
+              language: ch.language,
+            }),
+        );
+      }
       storeChunk(ctx, ch, result);
     } catch (err) {
       if (err instanceof QuotaError) throw err; // no point trying the rest

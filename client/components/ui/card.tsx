@@ -9,7 +9,7 @@ export function Card({ title, description, actions, children, className = '' }: 
   className?: string;
 }) {
   return (
-    <section className={`rounded-xl border border-line bg-surface ${className}`}>
+    <section className={`rounded-2xl border border-line bg-surface ${className}`}>
       {(title || actions) && (
         <header className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
           <div>

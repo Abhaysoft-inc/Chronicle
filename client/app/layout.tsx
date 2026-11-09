@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Hanken_Grotesk, Newsreader } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider } from "@/features/auth/auth-context";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Sarvam's site pairs Matter (body) with Season Mix (display serif). Both are paid typefaces, so these are
+// free stand-ins with the same character: Hanken Grotesk for the neo-grotesque body, Newsreader for the serif headings.
+const sans = Hanken_Grotesk({
+  variable: "--font-body-src",
+  subsets: ["latin"],
+});
+
+const display = Newsreader({
+  variable: "--font-display-src",
   subsets: ["latin"],
 });
 
@@ -25,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${sans.variable} ${display.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ToastProvider>

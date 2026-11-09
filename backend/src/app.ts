@@ -11,6 +11,14 @@ import { findingsRouter } from './modules/findings/index.ts';
 import { briefRouter } from './modules/brief/index.ts';
 import { pipelineRouter } from './modules/pipeline/index.ts';
 import { timelineRouter } from './modules/timeline/index.ts';
+import { recordsRouter } from './modules/records/index.ts';
+import { copilotRouter } from './modules/copilot/index.ts';
+import { voiceRouter } from './modules/voice/index.ts';
+import { collaborationRouter } from './modules/collaboration/index.ts';
+import { marketplaceRouter } from './modules/marketplace/index.ts';
+import { insuranceRouter } from './modules/insurance/index.ts';
+import { auditRouter } from './modules/audit/index.ts';
+import { enterpriseRouter } from './modules/enterprise/index.ts';
 
 /** Build the HTTP app. Each module contributes one router under /api. */
 export function createApp(ctx: Ctx): Express {
@@ -44,6 +52,14 @@ export function createApp(ctx: Ctx): Express {
   api.use(briefRouter(ctx));
   api.use(pipelineRouter(ctx));
   api.use(timelineRouter(ctx));
+  api.use(recordsRouter(ctx));
+  api.use(copilotRouter(ctx));
+  api.use(voiceRouter(ctx));
+  api.use(collaborationRouter(ctx));
+  api.use(marketplaceRouter(ctx));
+  api.use(insuranceRouter(ctx));
+  api.use(auditRouter(ctx));
+  api.use(enterpriseRouter(ctx));
   app.use('/api', api);
 
   app.use((req, _res, next) => next(new AppError(404, 'not_found', `No route for ${req.method} ${req.path}`)));

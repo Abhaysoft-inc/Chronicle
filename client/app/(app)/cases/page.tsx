@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Cases</h1>
+        <h1 className="font-display text-2xl font-medium tracking-tight">Cases</h1>
         <p className="mt-1 text-sm text-muted">
           Upload a case&apos;s records, and Chronicle reads them, builds a sourced timeline, and flags what an expert should look at.
         </p>
